@@ -3726,6 +3726,10 @@
   "877b3cbf-f755-458e-bea6-98e29469f7a7": {
     "ethereum": "sygna:0x8000003c.0x6768063279e2b185dc0c972b97f11f231d0b45ad"
   },
+  "8787811a-b6ee-463d-9d12-093a245ae257": {
+    "ethereum": "sygna:0x8000003c.0x8292bb45bf1ee4d140127049757c2e0ff06317ed",
+    "xrp-ledger": "sygna:xrpl.524C555344000000000000000000000000000000.rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De"
+  },
   "879ce79a-97cf-4220-b24d-8a33dd6d7577": {
     "ethereum": "sygna:0x8000003c.0x4d224452801aced8b2f0aebe155379bb5d594381"
   },

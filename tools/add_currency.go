@@ -22,7 +22,7 @@ type PlatformInfo struct {
 	TokenAddress string `json:"token_address"`
 }
 
-type CoingeckoMappingV2 struct {
+type CoingeckoMappingV3 struct {
 	CurrencyID  string `json:"currency_id"`
 	CoingeckoID string `json:"coingecko_id"`
 }
@@ -63,7 +63,7 @@ func main() {
 }
 
 func addCurrency(symbol, name, platform, tokenAddress, coingeckoID string) error {
-	filename := fmt.Sprintf("../cryptocurrency_v2/%s.json", symbol)
+	filename := fmt.Sprintf("../cryptocurrency_v3/%s.json", symbol)
 
 	var currencies []Currency
 	existingData, err := os.ReadFile(filename)
@@ -137,9 +137,9 @@ func addCurrency(symbol, name, platform, tokenAddress, coingeckoID string) error
 }
 
 func updateCoingeckoMapping(currencyUUID, coingeckoID string) error {
-	mappingFile := "../coingecko_id/mapping_v2.json"
+	mappingFile := "../coingecko_id/mapping_v3.json"
 
-	var mapping []CoingeckoMappingV2
+	var mapping []CoingeckoMappingV3
 	existingData, err := os.ReadFile(mappingFile)
 	if err != nil {
 		return fmt.Errorf("%q not found", mappingFile)
@@ -149,7 +149,7 @@ func updateCoingeckoMapping(currencyUUID, coingeckoID string) error {
 		return fmt.Errorf("failed to parse mapping: %v", err)
 	}
 
-	mapping = append(mapping, CoingeckoMappingV2{
+	mapping = append(mapping, CoingeckoMappingV3{
 		CurrencyID:  currencyUUID,
 		CoingeckoID: coingeckoID,
 	})

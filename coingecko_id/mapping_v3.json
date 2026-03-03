@@ -8138,5 +8138,9 @@
   {
     "currency_id": "21976900-992d-48fe-a88e-a5b6dfaf36eb",
     "coingecko_id": "billionhappiness"
+  },
+  {
+    "currency_id": "8787811a-b6ee-463d-9d12-093a245ae257",
+    "coingecko_id": "ripple-usd"
   }
 ]
