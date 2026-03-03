@@ -1,0 +1,13 @@
+{
+  "currency_id": "sygna:0x8000003c.0x8292bb45bf1ee4d140127049757c2e0ff06317ed",
+  "currency_name": "Ripple USD on Ethereum",
+  "currency_symbol": "RLUSD",
+  "is_active": true,
+  "addr_extra_info": [],
+  "platform": {
+    "name": "Ethereum",
+    "symbol": "ETH",
+    "token_address": "0x8292bb45bf1ee4d140127049757c2e0ff06317ed",
+    "id": "sygna:0x8000003c"
+  }
+}

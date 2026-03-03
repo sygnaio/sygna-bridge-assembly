@@ -8842,5 +8842,13 @@
     {
         "currency_id": "sygna:canton",
         "coingecko_id": "canton"
+    },
+    {
+        "currency_id": "sygna:0x8000003c.0x8292bb45bf1ee4d140127049757c2e0ff06317ed",
+        "coingecko_id": "ripple-usd"
+    },
+    {
+        "currency_id": "sygna:xrpl.524C555344000000000000000000000000000000.rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De",
+        "coingecko_id": "ripple-usd"
     }
 ]
