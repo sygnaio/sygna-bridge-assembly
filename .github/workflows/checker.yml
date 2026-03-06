@@ -12,8 +12,8 @@ jobs:
         id: generate-token
         uses: actions/create-github-app-token@v1
         with:
-          app-id: ${{ secrets.CLONE_BOT_APP_ID }}
-          private-key: ${{ secrets.CLONE_BOT_PRIVATE_KEY }}
+          app-id: ${{ secrets.CLONE_BOT_ASSEMBLY_HANDLER_APP_ID }}
+          private-key: ${{ secrets.CLONE_BOT_ASSEMBLY_HANDLER_PRIVATE_KEY }}
           # 限制只存取需要的 repository
           repositories: 'sygna-bridge-assembly-handler'
       - name: Checkout code
