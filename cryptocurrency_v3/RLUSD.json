@@ -1,0 +1,15 @@
+[
+  {
+    "id": "8787811a-b6ee-463d-9d12-093a245ae257",
+    "symbol": "RLUSD",
+    "name": "Ripple USD",
+    "platforms": {
+      "ethereum": {
+        "token_address": "0x8292bb45bf1ee4d140127049757c2e0ff06317ed"
+      },
+      "xrp-ledger": {
+        "token_address": "524c555344000000000000000000000000000000.rmxckbedwqr76quhesumdegf4b9xj8m5de"
+      }
+    }
+  }
+]
