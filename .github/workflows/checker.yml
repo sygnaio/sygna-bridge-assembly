@@ -8,6 +8,14 @@ jobs:
     env:
       GITHUB_TOKEN: ${{ secrets.DEVOPS_CHANGELOG_TOKEN }}
     steps:
+      - name: Generate Token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.CLONE_BOT_ASSEMBLY_HANDLER_APP_ID }}
+          private-key: ${{ secrets.CLONE_BOT_ASSEMBLY_HANDLER_PRIVATE_KEY }}
+          # 限制只存取需要的 repository
+          repositories: 'sygna-bridge-assembly-handler'
       - name: Checkout code
         uses: actions/checkout@v2
 
@@ -16,13 +24,14 @@ jobs:
 
       - name: Checkout assembly handler
         env:
+          TOKEN: ${{ steps.generate-token.outputs.token }}
           ENV: ${{ github.head_ref }}
         run: |
           if [[ $ENV == "master" || $ENV == "test" ]]
           then
-            git clone --branch $ENV --depth 1 https://${GITHUB_TOKEN}@github.com/CoolBitX-Technology/sygna-bridge-assembly-handler.git handler
+            git clone --branch $ENV --depth 1 https://x-access-token:${TOKEN}@github.com/sygnaio/sygna-bridge-assembly-handler.git handler
           else
-            git clone --branch dev --depth 1 https://${GITHUB_TOKEN}@github.com/CoolBitX-Technology/sygna-bridge-assembly-handler.git handler
+            git clone --branch dev --depth 1 https://x-access-token:${TOKEN}@github.com/sygnaio/sygna-bridge-assembly-handler.git handler
           fi
 
       - name: Run checker

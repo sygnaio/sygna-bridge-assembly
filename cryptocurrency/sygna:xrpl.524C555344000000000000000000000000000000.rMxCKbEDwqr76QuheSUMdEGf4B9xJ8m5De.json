@@ -1,0 +1,13 @@
+{
+    "currency_id": "sygna:xrpl.524C555344000000000000000000000000000000.rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De",
+    "currency_name": "Ripple USD on XRP Ledger",
+    "currency_symbol": "RLUSD",
+    "is_active": true,
+    "addr_extra_info": [],
+    "platform": {
+        "name": "XRP Ledger",
+        "symbol": "XRPL",
+        "token_address": "524C555344000000000000000000000000000000.rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De",
+        "id": "sygna:xrpl"
+    }
+}

@@ -1,0 +1,8 @@
+{
+    "currency_id": "sygna:xrpl",
+    "currency_name": "XRP Ledger",
+    "currency_symbol": "XRPL",
+    "is_active": true,
+    "addr_extra_info": [],
+    "platform": null
+}
