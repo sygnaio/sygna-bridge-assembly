@@ -1,4 +1,13 @@
 
+## [1.44.0-alpha.1]
+> 2026-01-12
+
+[7f2e0dc](https://github.com/CoolBitX-Technology/sygna-bridge-assembly/commit/7f2e0dc) feat:   rename currency_v2 to v3 to be consistent with api path
+
+
+[1.44.0-alpha.1]: https://github.com/CoolBitX-Technology/sygna-bridge-assembly/releases/tag/1.44.0-alpha.1
+
+
 ## [1.43.1-alpha.3]
 > 2025-12-22
 
