@@ -1,0 +1,12 @@
+[
+  {
+    "id": "8f80f786-10ee-42a0-89f6-99141917c13a",
+    "symbol": "JPYSC",
+    "name": "JPYSC",
+    "platforms": {
+      "ethereum": {
+        "token_address": "0xc1bb986582a76aefc3b5f381d3685e35b286e9e4"
+      }
+    }
+  }
+]
