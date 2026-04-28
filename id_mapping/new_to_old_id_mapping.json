@@ -7151,5 +7151,8 @@
   },
   "fff2a54f-5784-4d21-b5a7-a6e468a88285": {
     "achain": "sygna:0x8000029a"
+  },
+  "8f80f786-10ee-42a0-89f6-99141917c13a": {
+    "ethereum": "sygna:0x8000003c.0xc1bb986582a76aefc3b5f381d3685e35b286e9e4"
   }
 }
