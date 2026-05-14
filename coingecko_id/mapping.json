@@ -8850,5 +8850,9 @@
     {
         "currency_id": "sygna:xrpl.524C555344000000000000000000000000000000.rMxCKbEDwqr76QuheSUMdEGf4B9xJ8m5De",
         "coingecko_id": "ripple-usd"
+    },
+    {
+        "currency_id": "sygna:0x800001f5.2zMMhcVQEXDtdE6vsFS7S7D5oUodfJHE8vd1gnBouauv",
+        "coingecko_id": "pudgy-penguins"
     }
 ]
