@@ -6,6 +6,18 @@
     "platforms": {
       "solana": {
         "token_address": "2zmmhcvqexdtde6vsfs7s7d5ouodfjhe8vd1gnbouauv"
+      },
+      "abstract-chain": {
+        "token_address": "0x9ebe3a824ca958e4b3da772d2065518f009cba62"
+      },
+      "ethereum": {
+        "token_address": "0x6418c0dd099a9fda397c766304cdd918233e8847"
+      },
+      "hyperevm": {
+        "token_address": "0xfa44c2634ff17cbe26dc3007d36bd61c79068c14"
+      },
+      "binance-smart-chain": {
+        "token_address": "0x6418c0dd099a9fda397c766304cdd918233e8847"
       }
     }
   }

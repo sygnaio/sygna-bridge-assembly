@@ -8858,5 +8858,21 @@
     {
         "currency_id": "sygna:0x800001f5.2zMMhcVQEXDtdE6vsFS7S7D5oUodfJHE8vd1gnBouauv",
         "coingecko_id": "pudgy-penguins"
+    },
+    {
+        "currency_id": "sygna:abstract.0x9ebe3a824ca958e4b3da772d2065518f009cba62",
+        "coingecko_id": "pudgy-penguins"
+    },
+    {
+        "currency_id": "sygna:hyperevm.0xfa44c2634ff17cbe26dc3007d36bd61c79068c14",
+        "coingecko_id": "pudgy-penguins"
+    },
+    {
+        "currency_id": "sygna:0x8000232e.0x6418c0dd099a9fda397c766304cdd918233e8847",
+        "coingecko_id": "pudgy-penguins"
+    },
+    {
+        "currency_id": "sygna:0x8000003c.0x6418c0dd099a9fda397c766304cdd918233e8847",
+        "coingecko_id": "pudgy-penguins"
     }
 ]
