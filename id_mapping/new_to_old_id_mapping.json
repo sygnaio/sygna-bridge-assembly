@@ -796,7 +796,8 @@
   "1b2170ec-ab9f-4d8a-8f71-f14a7b4cfee4": {
     "binance-smart-chain": "sygna:0x8000232e.0x3019bf2a2ef8040c242c9a4c5c4bd4c81678b2a1",
     "ethereum": "sygna:0x8000003c.0xe3c408bd53c31c085a1746af401a4042954ff740",
-    "solana": "sygna:0x800001f5.7i5kksx2weitkry7ja4zwsuxghs5ejbejy8vvxr4pfrx"
+    "solana": "sygna:0x800001f5.7i5kksx2weitkry7ja4zwsuxghs5ejbejy8vvxr4pfrx",
+    "polygon": "sygna:0x800003c6.0x714DB550b574b3E927af3D93E26127D15721D4C2"
   },
   "1b2ab19f-7163-4e93-a2e6-d69fb8bb6e70": {
     "ethereum": "sygna:0x8000003c.0x622f2962ae78e8686ecc1e30cf2f9a6e5ac35626",
