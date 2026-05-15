@@ -1959,7 +1959,7 @@
     "ethereum": "sygna:0x8000003c.0xa7a5c03399f4739f4afa934bb9053c992b53d7a2"
   },
   "45e238c7-e107-40fc-baba-ebae50a77e03": {
-    "aptos": "sygna:0x8000027d"
+    "aptos": "sygna:0x8000027d.0x1::aptos_coin::AptosCoin"
   },
   "4605b797-e07d-4a14-ad40-fc225bb2ccc5": {
     "ethereum": "sygna:0x8000003c.0xb1ec548f296270bc96b8a1b3b3c8f3f04b494215"

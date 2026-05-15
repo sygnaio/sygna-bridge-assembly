@@ -580,6 +580,10 @@
         "coingecko_id": "aptos"
     },
     {
+        "currency_id": "sygna:0x8000027d.0x1::aptos_coin::AptosCoin",
+        "coingecko_id": "aptos"
+    },
+    {
         "currency_id": "sygna:0x8000027e",
         "coingecko_id": "adonis-2"
     },
