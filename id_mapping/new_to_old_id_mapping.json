@@ -6853,7 +6853,8 @@
     "ethereum": "sygna:0x8000003c.0xde5ea375ffbdc8b25a80fe13d631e8ba0ab4bb02"
   },
   "f52d42b1-e958-461a-b736-6f3f23320e2f": {
-    "near": "sygna:0x8000018d"
+    "near": "sygna:0x8000018d",
+    "ethereum": "sygna:0x8000003c.0x85f17cf997934a597031b2e18a9ab6ebd4b9f6a4"
   },
   "f538d7af-d3e0-4d19-ba58-606809a1bc67": {
     "ethereum": "sygna:0x8000003c.0xb1c1cb8c7c1992dba24e628bf7d38e71dad46aeb"
