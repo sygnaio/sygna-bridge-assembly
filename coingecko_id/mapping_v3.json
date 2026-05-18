@@ -8142,5 +8142,9 @@
   {
     "currency_id": "8787811a-b6ee-463d-9d12-093a245ae257",
     "coingecko_id": "ripple-usd"
+  },
+  {
+    "currency_id": "9f8e59c1-61ab-4e4c-88bc-fb82c71dd7ce",
+    "coingecko_id": "pudgy-penguins"
   }
 ]
