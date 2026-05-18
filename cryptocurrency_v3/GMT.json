@@ -12,6 +12,9 @@
       },
       "solana": {
         "token_address": "7i5kksx2weitkry7ja4zwsuxghs5ejbejy8vvxr4pfrx"
+      },
+      "polygon": {
+        "token_address": "0x714DB550b574b3E927af3D93E26127D15721D4C2"
       }
     }
   }

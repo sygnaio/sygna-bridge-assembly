@@ -868,6 +868,8 @@
     "sygna:osmosis":"osmosis",
     "sygna:celestia":"celestia",
     "sygna:akash":"akash",
-    "sygna:fetch.ai":"fetch.ai"
+    "sygna:fetch.ai":"fetch.ai",
+    "sygna:abstract":"abstract",
+    "sygna:hyperevm":"hyperevm"
 
 }
