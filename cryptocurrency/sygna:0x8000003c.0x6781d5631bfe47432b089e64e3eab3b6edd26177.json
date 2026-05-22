@@ -1,5 +1,5 @@
 {
-  "currency_id": "sygna:0x8000003c.0x6792e8d980a4dc6c34ca9056e3594333255db0e1",
+  "currency_id": "sygna:0x8000003c.0x6781d5631bfe47432b089e64e3eab3b6edd26177",
   "currency_name": "JPYSC",
   "currency_symbol": "JPYSC",
   "is_active": true,
@@ -8,6 +8,6 @@
     "id": "sygna:0x8000003c",
     "name": "Ethereum",
     "symbol": "ETH",
-    "token_address": "0x6792e8d980a4dc6c34ca9056e3594333255db0e1"
+    "token_address": "0x6781d5631bfe47432b089e64e3eab3b6edd26177"
   }
 }
