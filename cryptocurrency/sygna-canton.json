@@ -1,1 +1,1 @@
-{"currency_id":"sygna:canton","currency_name":"Canton","currency_symbol":"CC","is_active":true,"addr_extra_info":[],"platform":null}
+{"currency_id":"sygna:canton","currency_name":"Canton","currency_symbol":"CC","is_active":true,"addr_extra_info":["memo"],"platform":null}
