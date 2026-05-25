@@ -5,7 +5,7 @@
     "name": "Aptos",
     "platforms": {
       "aptos": {
-        "token_address": "0x1::aptos_coin::AptosCoin"
+        "token_address": "native"
       }
     }
   }
