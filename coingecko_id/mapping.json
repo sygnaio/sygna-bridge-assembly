@@ -389,7 +389,7 @@
     },
     {
         "currency_id": "sygna:0x8000020f",
-        "coingecko_id": "norma-in-metaland"
+        "coingecko_id": "grm"
     },
     {
         "currency_id": "sygna:0x80000213",
@@ -513,7 +513,7 @@
     },
     {
         "currency_id": "sygna:0x8000025f",
-        "coingecko_id": "the-open-network"
+        "coingecko_id": "gram"
     },
     {
         "currency_id": "sygna:0x80000261",

@@ -1,0 +1,12 @@
+[
+  {
+    "id": "2adf9d3c-9ab0-4c3d-b893-16f26ca97437",
+    "symbol": "GRM",
+    "name": "Grm",
+    "platforms": {
+      "gram": {
+        "token_address": "native"
+      }
+    }
+  }
+]
