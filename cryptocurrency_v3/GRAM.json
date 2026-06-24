@@ -1,12 +1,16 @@
-[
-  {
-    "id": "2adf9d3c-9ab0-4c3d-b893-16f26ca97437",
+{
+    "id": "f4dffdc7-0b52-47d8-8541-f30e6e253906",
     "symbol": "GRAM",
-    "name": "GRAM",
+    "name": "Gram",
     "platforms": {
-      "gram": {
+      "binance-smart-chain": {
+        "token_address": "0x76a797a59ba2c17726896976b7b3747bfd1d220f"
+      },
+      "ethereum": {
+        "token_address": "0x582d872a1b094fc48f5de31d3b73f2d9be47def1"
+      },
+      "ton": {
         "token_address": "native"
       }
     }
   }
-]
