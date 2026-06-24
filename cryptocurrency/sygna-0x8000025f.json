@@ -1,1 +1,1 @@
-{"currency_id":"sygna:0x8000025f","currency_name":"Toncoin","currency_symbol":"TON","is_active":true,"addr_extra_info":["tag"],"platform":null}
+{"currency_id":"sygna:0x8000025f","currency_name":"Gram","currency_symbol":"GRAM","is_active":true,"addr_extra_info":["tag","memo"],"platform":null}
