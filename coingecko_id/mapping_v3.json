@@ -8146,5 +8146,9 @@
   {
     "currency_id": "9f8e59c1-61ab-4e4c-88bc-fb82c71dd7ce",
     "coingecko_id": "pudgy-penguins"
+  },
+  {
+    "currency_id": "e0544d2b-c689-4660-adee-468f80b838b0",
+    "coingecko_id": "midnight-3"
   }
 ]
