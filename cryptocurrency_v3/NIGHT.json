@@ -1,0 +1,15 @@
+[
+  {
+    "id": "e0544d2b-c689-4660-adee-468f80b838b0",
+    "symbol": "NIGHT",
+    "name": "Midnight",
+    "platforms": {
+      "binance-smart-chain": {
+        "token_address": "0xfe930c2d63aed9b82fc4dbc801920dd2c1a3224f"
+      },
+      "cardano": {
+        "token_address": "0691b2fecca1ac4f53cb6dfb00b7013e561d1f34403b957cbb5af1fa4e49474854"
+      }
+    }
+  }
+]
