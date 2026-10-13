@@ -43,10 +43,11 @@ go run add_currency.go ... -dry-run
 | Flag | Description |
 |---|---|
 | `-symbol` | Currency symbol (required) |
-| `-name` | Currency name (required). Matched exactly against existing entries in the symbol file |
-| `-platform KEY:ADDRESS` | Repeatable. `KEY` is the v3 platform key (e.g. `ethereum`, `binance-smart-chain`, `polygon`). `KEY` alone, or `KEY:native`, means native |
+| `-name` | Currency name (required). Matched exactly against existing entries in the symbol file; a case-only difference is an error |
+| `-platform KEY:ADDRESS` | Repeatable. `KEY` is the v3 platform key (e.g. `ethereum`, `binance-smart-chain`, `polygon`). Native must be explicit: `KEY:native` |
 | `--token-address` | Old single-platform syntax: `-platform polygon --token-address 0x...` |
-| `--coingecko-id` | Required for a new currency; optional (must match) when adding platforms |
+| `--coingecko-id` | Required for a new currency; optional (must match) when adding platforms. If an existing currency has no `mapping_v3.json` entry, passing it adds one |
+| `-allow-shared-coingecko-id` | Allow a new currency to reuse a CoinGecko ID already mapped to another currency |
 | `-sygna-id KEY=sygna:...` | Override the legacy Sygna ID for a platform |
 | `-uuid` | Use a fixed UUID for a new currency instead of generating one |
 | `-dry-run` | Print the plan only |
@@ -66,4 +67,6 @@ Check CoinGecko's site, e.g. https://www.coingecko.com/en/coins/bitcoin, and fin
 - **Legacy Sygna ID** per platform: `-sygna-id` override → built-in table for common chains → unique match in `blockchain_name/mapping.json` (hyphens → underscores). Ambiguous or missing → error asking for `-sygna-id`.
 - **Legacy `platform.name`/`symbol`** are copied from existing legacy tokens on the same chain. If the chain has no token yet, the tool stops — add that platform manually.
 - **Native platforms** only get the v3 entry; legacy native files must be added manually.
-- **Duplicates**: refuses if the legacy ID is already in `old_to_new_id_mapping.json` or a legacy file exists under either `sygna-` or `sygna:` naming.
+- **Duplicates**: refuses if the platform already exists on the currency (case-insensitive), the same address is already used on that platform by any currency, the legacy ID is already in `old_to_new_id_mapping.json`, or a legacy file exists under either `sygna-` or `sygna:` naming.
+- **Input validation**: symbols are limited to `A-Z 0-9 $ . _ -`; addresses may not contain `/`, `\`, `..` or whitespace; EVM chains require `0x` + 40 hex. Nothing is ever written outside the repository.
+- **Writes**: each file is replaced atomically (temp file + rename). If any write fails, files already written are restored, so the repo is never left half-updated.

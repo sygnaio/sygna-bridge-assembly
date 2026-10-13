@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
+	"syscall"
 
 	"github.com/google/uuid"
 )
@@ -33,7 +35,45 @@ var knownSygnaIDs = map[string]string{
 	"stellar":             "sygna:0x80000094",
 }
 
-var evmAddressRe = regexp.MustCompile(`^0x[0-9a-fA-F]{40}$`)
+// evmPlatforms are v3 platform keys whose token addresses must be EVM addresses.
+var evmPlatforms = map[string]bool{
+	"ethereum":            true,
+	"binance-smart-chain": true,
+	"polygon":             true,
+	"optimism":            true,
+	"avalanche-c-chain":   true,
+	"arbitrum":            true,
+	"huobi-eco-chain":     true,
+	"base":                true,
+	"hyperevm":            true,
+	"abstract-chain":      true,
+}
+
+var (
+	evmAddressRe  = regexp.MustCompile(`^0[xX][0-9a-fA-F]{40}$`)
+	symbolRe      = regexp.MustCompile(`^[A-Z0-9$][A-Z0-9$._-]*$`)
+	platformKeyRe = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]*$`)
+)
+
+// validateAddress rejects values that could escape the data directory when
+// used in a filename. Inputs come from ticket text, so treat them as untrusted.
+func validateAddress(key, addr string) error {
+	if addr == "" {
+		return fmt.Errorf("missing address for platform %q; use -platform %s:ADDRESS or %s:native", key, key, key)
+	}
+	if strings.ContainsAny(addr, "/\\") || strings.Contains(addr, "..") {
+		return fmt.Errorf("invalid address %q for %s: must not contain '/', '\\' or '..'", addr, key)
+	}
+	for _, r := range addr {
+		if r <= ' ' || r == 0x7f {
+			return fmt.Errorf("invalid address %q for %s: contains whitespace or control characters", addr, key)
+		}
+	}
+	if evmPlatforms[key] && !evmAddressRe.MatchString(addr) {
+		return fmt.Errorf("invalid address %q for %s: expected 0x followed by 40 hex characters", addr, key)
+	}
+	return nil
+}
 
 type PlatformInfo struct {
 	TokenAddress string `json:"token_address"`
@@ -90,7 +130,15 @@ func (p Platforms) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (p *Platforms) Has(key string) bool { _, ok := p.m[key]; return ok }
+// Has reports whether key exists, ignoring case (existing data has e.g. "Kaia").
+func (p *Platforms) Has(key string) bool {
+	for _, k := range p.keys {
+		if strings.EqualFold(k, key) {
+			return true
+		}
+	}
+	return false
+}
 
 func (p *Platforms) Add(key string, info PlatformInfo) {
 	if p.m == nil {
@@ -152,9 +200,10 @@ func main() {
 	var platformFlags, sygnaIDFlags repeated
 	symbol := flag.String("symbol", "", "Currency symbol (required, e.g. BTC, USDT)")
 	name := flag.String("name", "", "Currency name (required, e.g. Bitcoin, Tether)")
-	flag.Var(&platformFlags, "platform", "Platform as KEY:ADDRESS (repeatable). KEY alone is allowed together with --token-address, or for native")
-	tokenAddress := flag.String("token-address", "", "Token address when a single -platform is given without :ADDRESS (default: native)")
+	flag.Var(&platformFlags, "platform", "Platform as KEY:ADDRESS or KEY:native (repeatable). KEY alone only together with --token-address")
+	tokenAddress := flag.String("token-address", "", "Token address (or native) when a single -platform is given without :ADDRESS")
 	coingeckoID := flag.String("coingecko-id", "", "CoinGecko ID (required for a new currency)")
+	allowSharedCG := flag.Bool("allow-shared-coingecko-id", false, "Allow a new currency to use a CoinGecko ID already mapped to another currency")
 	flag.Var(&sygnaIDFlags, "sygna-id", "Override legacy Sygna ID as KEY=sygna:... (repeatable)")
 	fixedUUID := flag.String("uuid", "", "Use this UUID for a new currency instead of generating one")
 	root := flag.String("root", "..", "Repository root")
@@ -169,6 +218,10 @@ func main() {
 		os.Exit(1)
 	}
 
+	normSymbol := strings.ToUpper(strings.TrimSpace(*symbol))
+	if !symbolRe.MatchString(normSymbol) || strings.Contains(normSymbol, "..") {
+		log.Fatalf("Error: invalid -symbol %q: only A-Z, 0-9, '$', '.', '_' and '-' are allowed", *symbol)
+	}
 	overrides := map[string]string{}
 	for _, s := range sygnaIDFlags {
 		k, v, ok := strings.Cut(s, "=")
@@ -179,13 +232,14 @@ func main() {
 	}
 
 	a := &adder{
-		root:        *root,
-		symbol:      strings.ToUpper(strings.TrimSpace(*symbol)),
-		name:        strings.TrimSpace(*name),
-		coingeckoID: strings.ToLower(strings.TrimSpace(*coingeckoID)),
-		uuid:        strings.TrimSpace(*fixedUUID),
-		overrides:   overrides,
-		files:       map[string][]byte{},
+		root:          *root,
+		symbol:        normSymbol,
+		name:          strings.TrimSpace(*name),
+		coingeckoID:   strings.ToLower(strings.TrimSpace(*coingeckoID)),
+		uuid:          strings.TrimSpace(*fixedUUID),
+		overrides:     overrides,
+		allowSharedCG: *allowSharedCG,
+		files:         map[string][]byte{},
 	}
 	for _, p := range platformFlags {
 		key, addr, hasAddr := strings.Cut(p, ":")
@@ -195,7 +249,11 @@ func main() {
 			}
 			addr = *tokenAddress
 		}
-		a.rawPlatforms = append(a.rawPlatforms, [2]string{strings.ToLower(strings.TrimSpace(key)), strings.TrimSpace(addr)})
+		key = strings.ToLower(strings.TrimSpace(key))
+		if !platformKeyRe.MatchString(key) {
+			log.Fatalf("Error: invalid platform key %q", key)
+		}
+		a.rawPlatforms = append(a.rawPlatforms, [2]string{key, strings.TrimSpace(addr)})
 	}
 
 	if err := a.run(*dryRun); err != nil {
@@ -204,15 +262,17 @@ func main() {
 }
 
 type adder struct {
-	root         string
-	symbol       string
-	name         string
-	coingeckoID  string
-	uuid         string
-	overrides    map[string]string
-	rawPlatforms [][2]string
+	root          string
+	symbol        string
+	name          string
+	coingeckoID   string
+	uuid          string
+	overrides     map[string]string
+	allowSharedCG bool
+	rawPlatforms  [][2]string
 
 	isNew     bool
+	addCGv3   bool // append a mapping_v3.json entry (new currency, or existing one missing it)
 	platforms []platformSpec
 	files     map[string][]byte // relative path → new content
 	order     []string
@@ -251,6 +311,9 @@ func (a *adder) run(dryRun bool) error {
 			target = &currencies[i]
 			break
 		}
+		if strings.EqualFold(currencies[i].Name, a.name) {
+			return fmt.Errorf("%s already has currency %q (differs only in case from %q); use the exact existing name", v3File, currencies[i].Name, a.name)
+		}
 	}
 
 	cgV3, err := a.loadCoingeckoV3()
@@ -260,8 +323,16 @@ func (a *adder) run(dryRun bool) error {
 
 	if target == nil {
 		a.isNew = true
+		a.addCGv3 = true
 		if a.coingeckoID == "" {
 			return fmt.Errorf("--coingecko-id is required when creating a new currency")
+		}
+		if !a.allowSharedCG {
+			for id, cg := range cgV3 {
+				if cg == a.coingeckoID {
+					return fmt.Errorf("CoinGecko ID %q is already mapped to currency %s; if this is really a separate currency, pass -allow-shared-coingecko-id", cg, id)
+				}
+			}
 		}
 		if a.uuid == "" {
 			a.uuid = uuid.New().String()
@@ -279,7 +350,9 @@ func (a *adder) run(dryRun bool) error {
 			return fmt.Errorf("no CoinGecko ID found for %s in mapping_v3.json; pass --coingecko-id", a.uuid)
 		case a.coingeckoID == "":
 			a.coingeckoID = existing
-		case existing != "" && existing != a.coingeckoID:
+		case existing == "":
+			a.addCGv3 = true
+		case existing != a.coingeckoID:
 			return fmt.Errorf("--coingecko-id %q differs from existing mapping %q for %s", a.coingeckoID, existing, a.uuid)
 		}
 		log.Printf("Adding platforms to existing currency %q (UUID %s)", a.name, a.uuid)
@@ -305,18 +378,110 @@ func (a *adder) run(dryRun bool) error {
 		return fmt.Errorf("self-check failed, nothing written: %v", err)
 	}
 
+	for _, rel := range a.order {
+		if err := a.checkInsideRoot(rel); err != nil {
+			return err
+		}
+	}
+
 	if dryRun {
 		a.printPlan()
 		return nil
 	}
+	return a.writeAll()
+}
+
+func (a *adder) checkInsideRoot(rel string) error {
+	root, err := filepath.Abs(a.root)
+	if err != nil {
+		return err
+	}
+	target, err := filepath.Abs(a.path(rel))
+	if err != nil {
+		return err
+	}
+	r, err := filepath.Rel(root, target)
+	if err != nil || r == ".." || strings.HasPrefix(r, ".."+string(filepath.Separator)) || filepath.IsAbs(r) {
+		return fmt.Errorf("refusing to write outside the repository: %s", rel)
+	}
+	return nil
+}
+
+// writeAll replaces each file atomically (temp file + rename, so an
+// interrupted write never truncates a file) and, if any write fails, restores
+// the files already written so the repository is never left half-updated.
+func (a *adder) writeAll() error {
+	type original struct {
+		data   []byte
+		exists bool
+	}
+	originals := map[string]original{}
 	for _, rel := range a.order {
-		if err := os.WriteFile(a.path(rel), a.files[rel], 0644); err != nil {
-			return fmt.Errorf("failed to write %s: %v", rel, err)
+		data, err := os.ReadFile(a.path(rel))
+		switch {
+		case err == nil:
+			originals[rel] = original{data, true}
+		case os.IsNotExist(err):
+			originals[rel] = original{nil, false}
+		default:
+			return fmt.Errorf("failed to read %s: %v", rel, err)
 		}
+	}
+
+	// Defer Ctrl-C until the batch (or its rollback) is finished.
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(sig)
+
+	var written []string
+	for _, rel := range a.order {
+		if err := writeFileAtomic(a.path(rel), a.files[rel]); err != nil {
+			var failed []string
+			for _, w := range written {
+				o := originals[w]
+				var rerr error
+				if o.exists {
+					rerr = writeFileAtomic(a.path(w), o.data)
+				} else {
+					rerr = os.Remove(a.path(w))
+				}
+				if rerr != nil {
+					failed = append(failed, w)
+				}
+			}
+			if len(failed) > 0 {
+				return fmt.Errorf("failed to write %s: %v; rollback also failed — restore with: git checkout -- %s && git clean -f -- cryptocurrency", rel, err, strings.Join(failed, " "))
+			}
+			return fmt.Errorf("failed to write %s: %v; all changes rolled back, nothing was modified", rel, err)
+		}
+		written = append(written, rel)
 		log.Printf("✓ %s", rel)
 	}
 	log.Println("✅ Done")
 	return nil
+}
+
+func writeFileAtomic(path string, data []byte) error {
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".add_currency-*")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tmp.Name())
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	mode := os.FileMode(0644)
+	if fi, err := os.Stat(path); err == nil {
+		mode = fi.Mode().Perm()
+	}
+	if err := os.Chmod(tmp.Name(), mode); err != nil {
+		return err
+	}
+	return os.Rename(tmp.Name(), path)
 }
 
 // plan validates every requested platform and resolves its legacy details
@@ -334,6 +499,16 @@ func (a *adder) plan(target *Currency) error {
 	for k := range oldToNew {
 		existingIDs[strings.ToLower(k)] = k
 	}
+	var newToOld map[string]map[string]string
+	if data, err := a.read("id_mapping/new_to_old_id_mapping.json"); err != nil {
+		return err
+	} else if err := json.Unmarshal(data, &newToOld); err != nil {
+		return fmt.Errorf("failed to parse id_mapping/new_to_old_id_mapping.json: %v", err)
+	}
+	usedAddresses, err := a.loadV3Addresses()
+	if err != nil {
+		return err
+	}
 
 	seen := map[string]bool{}
 	for _, rp := range a.rawPlatforms {
@@ -348,13 +523,26 @@ func (a *adder) plan(target *Currency) error {
 		if target.Platforms.Has(key) {
 			return fmt.Errorf("platform %q already exists on %q", key, a.name)
 		}
+		for k := range newToOld[target.ID] {
+			if strings.EqualFold(k, key) {
+				return fmt.Errorf("platform %q already exists for %s in new_to_old_id_mapping.json", k, target.ID)
+			}
+		}
 
-		spec := platformSpec{key: key, v3Address: strings.ToLower(addr)}
-		if addr == "" || strings.EqualFold(addr, "native") {
-			spec.v3Address = "native"
+		if strings.EqualFold(addr, "native") {
 			log.Printf("⚠️ %s is native: v3 only, legacy files must be added manually", key)
-			a.platforms = append(a.platforms, spec)
+			a.platforms = append(a.platforms, platformSpec{key: key, v3Address: "native"})
 			continue
+		}
+		if err := validateAddress(key, addr); err != nil {
+			return err
+		}
+		if evmAddressRe.MatchString(addr) {
+			addr = strings.ToLower(addr)
+		}
+		spec := platformSpec{key: key, v3Address: strings.ToLower(addr)}
+		if owner, dup := usedAddresses[key+"|"+spec.v3Address]; dup {
+			return fmt.Errorf("address %s on %s is already used by %s", addr, key, owner)
 		}
 
 		sygnaID, err := a.resolveSygnaID(key)
@@ -366,9 +554,6 @@ func (a *adder) plan(target *Currency) error {
 			return fmt.Errorf("no existing legacy token on %s (%s) to copy platform name/symbol from; add this platform manually", key, sygnaID)
 		}
 		legacyAddr := addr
-		if evmAddressRe.MatchString(addr) {
-			legacyAddr = strings.ToLower(addr)
-		}
 		lp := &legacyPlan{
 			sygnaID:  sygnaID,
 			address:  legacyAddr,
@@ -423,7 +608,7 @@ func (a *adder) resolveSygnaID(key string) (string, error) {
 }
 
 func (a *adder) stageMappings(cgV3 map[string]string) error {
-	if a.isNew {
+	if a.addCGv3 {
 		if err := a.appendEntry("coingecko_id/mapping_v3.json", ']', "",
 			indentJSON(CoingeckoMapping{a.uuid, a.coingeckoID}, "  ", "  ")); err != nil {
 			return err
@@ -520,6 +705,9 @@ func appendToContainer(data []byte, closing byte, closingIndent, entry string) (
 		return nil, fmt.Errorf("expected content to end with %q", closing)
 	}
 	body := bytes.TrimRight(trimmed[:len(trimmed)-1], " \t\r\n")
+	if len(body) == 0 {
+		return nil, fmt.Errorf("expected an enclosing array or object")
+	}
 	var out bytes.Buffer
 	out.Write(body)
 	if last := body[len(body)-1]; last != '[' && last != '{' {
@@ -537,20 +725,37 @@ func (a *adder) verify() error {
 		if !json.Valid(a.files[rel]) {
 			return fmt.Errorf("%s is not valid JSON", rel)
 		}
+		before := map[string]bool{}
+		if orig, err := os.ReadFile(a.path(rel)); err == nil {
+			for _, d := range duplicateKeys(orig) {
+				before[d] = true
+			}
+		}
+		for _, d := range duplicateKeys(a.files[rel]) {
+			if !before[d] {
+				return fmt.Errorf("%s would contain duplicate key %s", rel, d)
+			}
+		}
 	}
 	o2n, err := a.loadStringMap("id_mapping/old_to_new_id_mapping.json")
 	if err != nil {
 		return err
 	}
 	var n2o map[string]map[string]string
-	data, _ := a.read("id_mapping/new_to_old_id_mapping.json")
-	if err := json.Unmarshal(data, &n2o); err != nil {
+	data, err := a.read("id_mapping/new_to_old_id_mapping.json")
+	if err != nil {
 		return err
 	}
+	if err := json.Unmarshal(data, &n2o); err != nil {
+		return fmt.Errorf("new_to_old_id_mapping.json: %v", err)
+	}
 	var cg []CoingeckoMapping
-	data, _ = a.read("coingecko_id/mapping.json")
-	if err := json.Unmarshal(data, &cg); err != nil {
+	data, err = a.read("coingecko_id/mapping.json")
+	if err != nil {
 		return err
+	}
+	if err := json.Unmarshal(data, &cg); err != nil {
+		return fmt.Errorf("coingecko_id/mapping.json: %v", err)
 	}
 	cgCount := map[string]int{}
 	for _, m := range cg {
@@ -712,4 +917,82 @@ func indentJSON(v any, prefix, indent string) string {
 func quote(s string) string {
 	b, _ := json.Marshal(s)
 	return string(b)
+}
+
+// loadV3Addresses indexes every token address in cryptocurrency_v3 as
+// "<lowercased platform key>|<lowercased address>" → "SYMBOL (Name)".
+func (a *adder) loadV3Addresses() (map[string]string, error) {
+	files, err := filepath.Glob(filepath.Join(a.path("cryptocurrency_v3"), "*.json"))
+	if err != nil {
+		return nil, err
+	}
+	used := map[string]string{}
+	for _, f := range files {
+		data, err := os.ReadFile(f)
+		if err != nil {
+			return nil, err
+		}
+		var list []Currency
+		if err := json.Unmarshal(data, &list); err != nil {
+			var single Currency
+			if json.Unmarshal(data, &single) != nil {
+				return nil, fmt.Errorf("failed to parse %s: %v", f, err)
+			}
+			list = []Currency{single}
+		}
+		for _, c := range list {
+			for _, k := range c.Platforms.keys {
+				addr := strings.ToLower(c.Platforms.m[k].TokenAddress)
+				if addr != "" && addr != "native" {
+					used[strings.ToLower(k)+"|"+addr] = fmt.Sprintf("%s (%s)", c.Symbol, c.Name)
+				}
+			}
+		}
+	}
+	return used, nil
+}
+
+// duplicateKeys returns the paths of object keys that appear more than once
+// in the same object. encoding/json silently keeps the last one.
+func duplicateKeys(data []byte) []string {
+	var dups []string
+	dec := json.NewDecoder(bytes.NewReader(data))
+	var walk func(path string) error
+	walk = func(path string) error {
+		t, err := dec.Token()
+		if err != nil {
+			return err
+		}
+		switch t {
+		case json.Delim('{'):
+			seen := map[string]bool{}
+			for dec.More() {
+				kt, err := dec.Token()
+				if err != nil {
+					return err
+				}
+				k := kt.(string)
+				if seen[k] {
+					dups = append(dups, path+"."+k)
+				}
+				seen[k] = true
+				if err := walk(path + "." + k); err != nil {
+					return err
+				}
+			}
+			_, err = dec.Token()
+			return err
+		case json.Delim('['):
+			for i := 0; dec.More(); i++ {
+				if err := walk(fmt.Sprintf("%s[%d]", path, i)); err != nil {
+					return err
+				}
+			}
+			_, err = dec.Token()
+			return err
+		}
+		return nil
+	}
+	_ = walk("$")
+	return dups
 }
