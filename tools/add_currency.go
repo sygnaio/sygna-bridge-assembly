@@ -47,6 +47,10 @@ var evmPlatforms = map[string]bool{
 	"base":                true,
 	"hyperevm":            true,
 	"abstract-chain":      true,
+	"kaia":                true,
+	"ronin":               true,
+	"harmonyone":          true,
+	"celo":                true,
 }
 
 var (
@@ -205,7 +209,7 @@ func main() {
 	coingeckoID := flag.String("coingecko-id", "", "CoinGecko ID (required for a new currency)")
 	allowSharedCG := flag.Bool("allow-shared-coingecko-id", false, "Allow a new currency to use a CoinGecko ID already mapped to another currency")
 	flag.Var(&sygnaIDFlags, "sygna-id", "Override legacy Sygna ID as KEY=sygna:... (repeatable)")
-	fixedUUID := flag.String("uuid", "", "Use this UUID for a new currency instead of generating one")
+	fixedUUID := flag.String("uuid", "", "UUID for a new currency, or to choose among existing currencies with the same name")
 	root := flag.String("root", "..", "Repository root")
 	dryRun := flag.Bool("dry-run", false, "Print the planned changes without writing")
 	flag.Parse()
@@ -305,15 +309,38 @@ func (a *adder) run(dryRun bool) error {
 		return err
 	}
 
-	var target *Currency
+	// Some symbol files hold several currencies with the exact same name
+	// (e.g. SPA.json has three "Sperax"), so never silently pick the first.
+	var exact []int
+	caseOnly := ""
 	for i := range currencies {
-		if currencies[i].Name == a.name {
-			target = &currencies[i]
-			break
+		switch {
+		case currencies[i].Name == a.name:
+			exact = append(exact, i)
+		case strings.EqualFold(currencies[i].Name, a.name):
+			caseOnly = currencies[i].Name
 		}
-		if strings.EqualFold(currencies[i].Name, a.name) {
-			return fmt.Errorf("%s already has currency %q (differs only in case from %q); use the exact existing name", v3File, currencies[i].Name, a.name)
+	}
+	var target *Currency
+	switch {
+	case len(exact) == 1:
+		target = &currencies[exact[0]]
+		if a.uuid != "" && a.uuid != target.ID {
+			return fmt.Errorf("-uuid %s does not match existing %q (%s)", a.uuid, a.name, target.ID)
 		}
+	case len(exact) > 1:
+		var ids []string
+		for _, i := range exact {
+			ids = append(ids, currencies[i].ID)
+			if currencies[i].ID == a.uuid {
+				target = &currencies[i]
+			}
+		}
+		if target == nil {
+			return fmt.Errorf("%s has %d currencies named %q (%s); pass -uuid to choose one", v3File, len(exact), a.name, strings.Join(ids, ", "))
+		}
+	case caseOnly != "":
+		return fmt.Errorf("%s already has currency %q (differs only in case from %q); use the exact existing name", v3File, caseOnly, a.name)
 	}
 
 	cgV3, err := a.loadCoingeckoV3()
