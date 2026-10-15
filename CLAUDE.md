@@ -8,42 +8,44 @@ A cryptocurrency/token metadata data store for Sygna Bridge. It contains structu
 
 ## Adding a New Currency or Platform
 
-A complete addition touches **7 files** (both v3 and legacy formats). The Go tool only covers the first two; the rest are manual.
+A complete addition touches **7 files** (both v3 and legacy formats). `tools/add_currency.go` writes all of them in one command (`tools/add_currency.sh` runs it and downloads Go into a cache if it isn't installed). The `/add-currency <ClickUp task URL or ID>` skill (`.claude/skills/add-currency/SKILL.md`) wraps the full flow for PMs: reads the spec from ClickUp via the project's ClickUp MCP server (`.mcp.json`), verifies on CoinGecko, runs the tool, and opens the PR.
 
 ### Step 1 — Verify the CoinGecko ID first
 
 Don't trust the symbol alone — multiple coins share tickers. Query `https://api.coingecko.com/api/v3/search?query=<name>` and pick by market cap rank, then confirm contract addresses match the ticket via `https://api.coingecko.com/api/v3/coins/<id>` (e.g. NIGHT resolves to `midnight-3`, not `midnight`).
 
-### Step 2 — v3 files (Go tool)
+### Step 2 — Run the Go tool (all 7 files)
 
 ```bash
 cd tools
 
-# Add a new currency (creates a new UUID and file entry)
-go run add_currency.go -symbol BTC -name Bitcoin -platform bitcoin --token-address native --coingecko-id bitcoin
+# New currency, one -platform KEY:ADDRESS per chain (addresses in original case)
+go run add_currency.go -symbol NIGHT -name Midnight --coingecko-id midnight-3 \
+  -platform binance-smart-chain:0xfe930c2d63aed9b82fc4dbc801920dd2c1a3224f \
+  -platform cardano:0691b2fecca1ac4f53cb6dfb00b7013e561d1f34403b957cbb5af1fa4e49474854
 
-# Add a platform to an existing currency (matches by name; run once per extra platform)
-go run add_currency.go -symbol USDT -name Tether -platform polygon --token-address 0xc2132d05d31c914a87c6611c10748aeb04b58e8f
+# Add a platform to an existing currency (matched by symbol + exact name; CoinGecko ID reused)
+go run add_currency.go -symbol USDT -name Tether -platform polygon:0xc2132d05d31c914a87c6611c10748aeb04b58e8f
+
+# Append -dry-run to preview
 ```
 
-The tool:
-- Creates `cryptocurrency_v3/<SYMBOL>.json` if it doesn't exist
-- Appends a new platform entry if the currency name already exists
-- Generates a UUID for new currencies
-- Appends to `coingecko_id/mapping_v3.json` when `--coingecko-id` is provided (only on currency creation — the platform-key must match CoinGecko's platform key, e.g. `binance-smart-chain`, `cardano`, `ethereum`)
+Platform keys are this repo's v3 keys (`polygon`, `arbitrum`, `optimism`, …), not always CoinGecko's. See `tools/README.md` for all flags (`-sygna-id` override, `-uuid`, `-dry-run`). The tool validates everything in memory and writes nothing if any check fails. It does **not** handle native-chain legacy files or chains with no existing legacy token — those are manual (Step 3 describes the format).
 
-### Step 3 — Legacy files (manual)
+### Step 3 — What the tool writes (legacy format reference)
 
-For **each platform**, using the platform's Sygna ID (see reference table below):
+v3: `cryptocurrency_v3/<SYMBOL>.json` (addresses always lowercased, platform key order preserved) and, for a new currency, `coingecko_id/mapping_v3.json`.
 
-1. **`cryptocurrency/sygna-<platform-id>.<token_address>.json`** — note **dashes** in the filename (not colons). Copy the `platform` object (`name`/`symbol`/`id`) verbatim from an existing token file on the same chain, e.g.:
+Legacy, for **each token platform**, using the platform's Sygna ID (see reference table below):
+
+1. **`cryptocurrency/sygna-<platform-id>.<token_address>.json`** — a **dash** after `sygna` for new files. (The directory is mixed: most older files use a colon, e.g. `sygna:0x8000003c.<addr>.json`; don't rename them.) The `platform` object (`name`/`symbol`/`id`) matches existing token files on the same chain, e.g.:
    ```json
    {"currency_id":"sygna:0x8000232e.0xfe930c...","currency_name":"Midnight","currency_symbol":"NIGHT","is_active":true,"addr_extra_info":[],"platform":{"name":"Binance Smart Chain","symbol":"BSC","token_address":"0xfe930c...","id":"sygna:0x8000232e"}}
    ```
-   Single line, no pretty-printing. EVM addresses lowercase; non-EVM (e.g. Cardano policy ID) as-is.
-2. **`coingecko_id/mapping.json`** — append one entry per platform `currency_id`, all pointing at the same `coingecko_id`.
-3. **`id_mapping/new_to_old_id_mapping.json`** — add `"<uuid>": { "<platform-key>": "<legacy currency_id>", ... }` (one object with all platforms).
-4. **`id_mapping/old_to_new_id_mapping.json`** — add `"<legacy currency_id>": "<uuid>"` per platform.
+   Single line, no pretty-printing. EVM addresses lowercase; non-EVM as-is, keeping original case for case-sensitive chains (e.g. Solana base58 `2zMMhcVQ...` stays mixed-case in legacy even though v3 stores it lowercased). The legacy `currency_id` string is identical across this file and the three mapping files below.
+2. **`coingecko_id/mapping.json`** — one entry per platform `currency_id`, all pointing at the same `coingecko_id`.
+3. **`id_mapping/new_to_old_id_mapping.json`** — `"<uuid>": { "<platform-key>": "<legacy currency_id>", ... }` (one object with all platforms; adding a platform to an existing UUID extends its existing object).
+4. **`id_mapping/old_to_new_id_mapping.json`** — `"<legacy currency_id>": "<uuid>"` per platform.
 
 ### Platform reference (common)
 
@@ -52,12 +54,13 @@ For **each platform**, using the platform's Sygna ID (see reference table below)
 | `ethereum` | `sygna:0x8000003c` | Ethereum | ETH |
 | `binance-smart-chain` | `sygna:0x8000232e` | Binance Smart Chain | BSC |
 | `cardano` | `sygna:0x80000717` | Cardano | ADA |
+| `solana` | `sygna:0x800001f5` | Solana | SOL |
 
-For other chains: find the Sygna ID in `blockchain_name/mapping.json` (note: its values use underscores, e.g. `binance_smart_chain`, but v3 platform keys use hyphens), then copy `name`/`symbol` from any existing legacy token file with that ID prefix.
+For other chains: find the Sygna ID in `blockchain_name/mapping.json` (note: its values use underscores, e.g. `binance_smart_chain`, but v3 platform keys use hyphens; some newer chains have non-hex IDs like `sygna:hyperevm`, `sygna:abstract`), then copy `name`/`symbol` from any existing legacy token file with that ID prefix.
 
 ### Formatting gotchas
 
-- `coingecko_id/mapping.json` uses 4-space indent; `mapping_v3.json` and `id_mapping/*` use 2-space; both mapping files have **no trailing newline** — append with a targeted edit at the end of the array, don't rewrite/reformat the whole file.
+- `coingecko_id/mapping.json` uses 4-space indent; `mapping_v3.json` and `id_mapping/*` use 2-space; all of these mapping files have **no trailing newline** — append with a targeted edit at the end of the array, don't rewrite/reformat the whole file.
 - Legacy `cryptocurrency/*.json` files are single-line compact JSON.
 
 ## Data Formats
@@ -112,7 +115,7 @@ For other chains: find the Sygna ID in `blockchain_name/mapping.json` (note: its
 
 ## Branch & Commit Convention
 
-Branch from `dev` as `feat/SYGN-XXXXX` (or `fix/SYGN-XXXXX`). Commit messages follow `feat: SYGN-XXXXX <summary>` / `fix: SYGN-XXXXX <summary>`. Squash to a single commit before opening the PR against `dev`.
+Tickets live in ClickUp. Use the ClickUp task ID (the `<id>` in `https://app.clickup.com/t/<workspace>/<id>`, e.g. `z8qgvc4q1b`): branch from `dev` as `feat/<task-id>` (or `fix/<task-id>`), commit messages `feat: <task-id> <summary>` / `fix: <task-id> <summary>`. Older history uses `SYGN-XXXXX`. Squash to a single commit before opening the PR against `dev`.
 
 ## CI Validation
 
