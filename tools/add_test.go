@@ -85,13 +85,12 @@ func changed(before, after map[string]string) []string {
 // newAdder builds an adder the way main does after flag parsing.
 func newAdder(root, symbol, name, coingeckoID, uuid string, platforms ...string) *adder {
 	a := &adder{
-		root:        root,
+		repo:        newRepo(root),
 		symbol:      strings.ToUpper(symbol),
 		name:        name,
 		coingeckoID: coingeckoID,
 		uuid:        uuid,
 		overrides:   map[string]string{},
-		files:       map[string][]byte{},
 	}
 	for _, p := range platforms {
 		key, addr, _ := strings.Cut(p, ":")

@@ -113,49 +113,88 @@ type LegacyCurrency struct {
 	Platform       *LegacyPlatform `json:"platform"`
 }
 
-func (a *adder) path(rel string) string { return filepath.Join(a.root, rel) }
+// repo stages file changes in memory so a whole batch can be checked before
+// anything is written, then writes (or deletes) them together.
+type repo struct {
+	root    string
+	files   map[string][]byte // relative path → new content
+	deleted map[string]bool   // relative path → to be removed
+	order   []string
+}
 
-func (a *adder) read(rel string) ([]byte, error) {
-	if b, ok := a.files[rel]; ok {
+func newRepo(root string) *repo {
+	return &repo{root: root, files: map[string][]byte{}, deleted: map[string]bool{}}
+}
+
+func (r *repo) path(rel string) string { return filepath.Join(r.root, rel) }
+
+func (r *repo) read(rel string) ([]byte, error) {
+	if r.deleted[rel] {
+		return nil, &os.PathError{Op: "read", Path: rel, Err: os.ErrNotExist}
+	}
+	if b, ok := r.files[rel]; ok {
 		return b, nil
 	}
-	return os.ReadFile(a.path(rel))
+	return os.ReadFile(r.path(rel))
 }
 
-func (a *adder) stage(rel string, content []byte) {
-	if _, ok := a.files[rel]; !ok {
-		a.order = append(a.order, rel)
+func (r *repo) stage(rel string, content []byte) {
+	if _, ok := r.files[rel]; !ok {
+		r.order = append(r.order, rel)
 	}
-	a.files[rel] = content
+	r.files[rel] = content
+	delete(r.deleted, rel)
 }
 
-func (a *adder) checkInsideRoot(rel string) error {
-	root, err := filepath.Abs(a.root)
+// stageDelete marks rel to be removed when the batch is written.
+func (r *repo) stageDelete(rel string) {
+	if _, ok := r.files[rel]; !ok && !r.deleted[rel] {
+		r.order = append(r.order, rel)
+	}
+	delete(r.files, rel)
+	r.deleted[rel] = true
+}
+
+// changeKind reports whether rel is added, modified or deleted by the batch.
+func (r *repo) changeKind(rel string) string {
+	switch _, err := os.Stat(r.path(rel)); {
+	case r.deleted[rel]:
+		return "delete"
+	case os.IsNotExist(err):
+		return "add"
+	default:
+		return "modify"
+	}
+}
+
+func (r *repo) checkInsideRoot(rel string) error {
+	root, err := filepath.Abs(r.root)
 	if err != nil {
 		return err
 	}
-	target, err := filepath.Abs(a.path(rel))
+	target, err := filepath.Abs(r.path(rel))
 	if err != nil {
 		return err
 	}
-	r, err := filepath.Rel(root, target)
-	if err != nil || r == ".." || strings.HasPrefix(r, ".."+string(filepath.Separator)) || filepath.IsAbs(r) {
+	inside, err := filepath.Rel(root, target)
+	if err != nil || inside == ".." || strings.HasPrefix(inside, ".."+string(filepath.Separator)) || filepath.IsAbs(inside) {
 		return fmt.Errorf("refusing to write outside the repository: %s", rel)
 	}
 	return nil
 }
 
 // writeAll replaces each file atomically (temp file + rename, so an
-// interrupted write never truncates a file) and, if any write fails, restores
-// the files already written so the repository is never left half-updated.
-func (a *adder) writeAll() error {
+// interrupted write never truncates a file), removes staged deletes and, if
+// any step fails, restores the files already written or removed so the
+// repository is never left half-updated.
+func (r *repo) writeAll() error {
 	type original struct {
 		data   []byte
 		exists bool
 	}
 	originals := map[string]original{}
-	for _, rel := range a.order {
-		data, err := os.ReadFile(a.path(rel))
+	for _, rel := range r.order {
+		data, err := os.ReadFile(r.path(rel))
 		switch {
 		case err == nil:
 			originals[rel] = original{data, true}
@@ -172,16 +211,22 @@ func (a *adder) writeAll() error {
 	defer signal.Stop(sig)
 
 	var written []string
-	for _, rel := range a.order {
-		if err := writeFileAtomic(a.path(rel), a.files[rel]); err != nil {
+	for _, rel := range r.order {
+		var err error
+		if r.deleted[rel] {
+			err = os.Remove(r.path(rel))
+		} else {
+			err = writeFileAtomic(r.path(rel), r.files[rel])
+		}
+		if err != nil {
 			var failed []string
 			for _, w := range written {
 				o := originals[w]
 				var rerr error
 				if o.exists {
-					rerr = writeFileAtomic(a.path(w), o.data)
+					rerr = writeFileAtomic(r.path(w), o.data)
 				} else {
-					rerr = os.Remove(a.path(w))
+					rerr = os.Remove(r.path(w))
 				}
 				if rerr != nil {
 					failed = append(failed, w)
@@ -222,8 +267,8 @@ func writeFileAtomic(path string, data []byte) error {
 	return os.Rename(tmp.Name(), path)
 }
 
-func (a *adder) loadCoingeckoV3() (map[string]string, error) {
-	data, err := a.read("coingecko_id/mapping_v3.json")
+func (r *repo) loadCoingeckoV3() (map[string]string, error) {
+	data, err := r.read("coingecko_id/mapping_v3.json")
 	if err != nil {
 		return nil, err
 	}
@@ -238,8 +283,8 @@ func (a *adder) loadCoingeckoV3() (map[string]string, error) {
 	return m, nil
 }
 
-func (a *adder) loadStringMap(rel string) (map[string]string, error) {
-	data, err := a.read(rel)
+func (r *repo) loadStringMap(rel string) (map[string]string, error) {
+	data, err := r.read(rel)
 	if err != nil {
 		return nil, err
 	}
@@ -255,8 +300,8 @@ type legacyIndex struct {
 	platforms map[string]map[LegacyPlatform]int // sygna ID → name/symbol counts
 }
 
-func (a *adder) loadLegacyIndex() (*legacyIndex, error) {
-	entries, err := os.ReadDir(a.path("cryptocurrency"))
+func (r *repo) loadLegacyIndex() (*legacyIndex, error) {
+	entries, err := os.ReadDir(r.path("cryptocurrency"))
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +317,7 @@ func (a *adder) loadLegacyIndex() (*legacyIndex, error) {
 		}
 		idx.files[strings.ToLower(id)] = n
 
-		data, err := os.ReadFile(filepath.Join(a.path("cryptocurrency"), n))
+		data, err := os.ReadFile(filepath.Join(r.path("cryptocurrency"), n))
 		if err != nil {
 			return nil, err
 		}
@@ -313,8 +358,8 @@ func (idx *legacyIndex) fileForID(id string) (string, bool) {
 
 // loadV3Addresses indexes every token address in cryptocurrency_v3 as
 // "<lowercased platform key>|<lowercased address>" → "SYMBOL (Name)".
-func (a *adder) loadV3Addresses() (map[string]string, error) {
-	files, err := filepath.Glob(filepath.Join(a.path("cryptocurrency_v3"), "*.json"))
+func (r *repo) loadV3Addresses() (map[string]string, error) {
+	files, err := filepath.Glob(filepath.Join(r.path("cryptocurrency_v3"), "*.json"))
 	if err != nil {
 		return nil, err
 	}

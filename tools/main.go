@@ -50,14 +50,13 @@ func main() {
 	}
 
 	a := &adder{
-		root:          *root,
+		repo:          newRepo(*root),
 		symbol:        normSymbol,
 		name:          strings.TrimSpace(*name),
 		coingeckoID:   strings.ToLower(strings.TrimSpace(*coingeckoID)),
 		uuid:          strings.TrimSpace(*fixedUUID),
 		overrides:     overrides,
 		allowSharedCG: *allowSharedCG,
-		files:         map[string][]byte{},
 	}
 	for _, p := range platformFlags {
 		key, addr, hasAddr := strings.Cut(p, ":")

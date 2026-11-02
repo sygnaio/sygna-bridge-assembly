@@ -90,7 +90,7 @@ type legacyPlan struct {
 }
 
 type adder struct {
-	root          string
+	*repo
 	symbol        string
 	name          string
 	coingeckoID   string
@@ -102,8 +102,6 @@ type adder struct {
 	isNew     bool
 	addCGv3   bool // append a mapping_v3.json entry (new currency, or existing one missing it)
 	platforms []platformSpec
-	files     map[string][]byte // relative path → new content
-	order     []string
 }
 
 func (a *adder) run(dryRun bool) error {

@@ -6,23 +6,35 @@ import (
 	"os"
 )
 
-// verify re-parses every staged file and checks the cross-references agree.
-func (a *adder) verify() error {
-	for _, rel := range a.order {
-		if !json.Valid(a.files[rel]) {
+// verifyStaged checks that every staged file is valid JSON and adds no
+// duplicate keys that the original file did not already have.
+func (r *repo) verifyStaged() error {
+	for _, rel := range r.order {
+		if r.deleted[rel] {
+			continue
+		}
+		if !json.Valid(r.files[rel]) {
 			return fmt.Errorf("%s is not valid JSON", rel)
 		}
 		before := map[string]bool{}
-		if orig, err := os.ReadFile(a.path(rel)); err == nil {
+		if orig, err := os.ReadFile(r.path(rel)); err == nil {
 			for _, d := range duplicateKeys(orig) {
 				before[d] = true
 			}
 		}
-		for _, d := range duplicateKeys(a.files[rel]) {
+		for _, d := range duplicateKeys(r.files[rel]) {
 			if !before[d] {
 				return fmt.Errorf("%s would contain duplicate key %s", rel, d)
 			}
 		}
+	}
+	return nil
+}
+
+// verify re-parses every staged file and checks the cross-references agree.
+func (a *adder) verify() error {
+	if err := a.verifyStaged(); err != nil {
+		return err
 	}
 	o2n, err := a.loadStringMap("id_mapping/old_to_new_id_mapping.json")
 	if err != nil {
