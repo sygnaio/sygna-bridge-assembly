@@ -2,7 +2,7 @@
 
 ## 📋 Overview
 
-`add_currency.go` adds a currency, or new platforms for an existing currency, across **both v3 and legacy formats** in one command. It writes up to 7 files:
+The `add_currency` tool (`go run .` in `tools/`) adds a currency, or new platforms for an existing currency, across **both v3 and legacy formats** in one command. It writes up to 7 files:
 
 | File | When |
 |---|---|
@@ -25,15 +25,15 @@ No Go installed? Use `./add_currency.sh` with the same flags — it downloads Go
 cd tools
 
 # New currency on two chains
-go run add_currency.go -symbol NIGHT -name Midnight --coingecko-id midnight-3 \
+go run . -symbol NIGHT -name Midnight --coingecko-id midnight-3 \
   -platform binance-smart-chain:0xfe930c2d63aed9b82fc4dbc801920dd2c1a3224f \
   -platform cardano:0691b2fecca1ac4f53cb6dfb00b7013e561d1f34403b957cbb5af1fa4e49474854
 
 # Add a platform to an existing currency (CoinGecko ID is reused from mapping_v3.json)
-go run add_currency.go -symbol USDT -name Tether -platform polygon:0xc2132d05d31c914a87c6611c10748aeb04b58e8f
+go run . -symbol USDT -name Tether -platform polygon:0xc2132d05d31c914a87c6611c10748aeb04b58e8f
 
 # Preview without writing
-go run add_currency.go ... -dry-run
+go run . ... -dry-run
 ```
 
 ---

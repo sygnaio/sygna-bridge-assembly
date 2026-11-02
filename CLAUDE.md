@@ -8,7 +8,7 @@ A cryptocurrency/token metadata data store for Sygna Bridge. It contains structu
 
 ## Adding a New Currency or Platform
 
-A complete addition touches **7 files** (both v3 and legacy formats). `tools/add_currency.go` writes all of them in one command (`tools/add_currency.sh` runs it and downloads Go into a cache if it isn't installed). The `/add-currency <ClickUp task URL or ID>` skill (`.claude/skills/add-currency/SKILL.md`) wraps the full flow for PMs: reads the spec from ClickUp via the project's ClickUp MCP server (`.mcp.json`), verifies on CoinGecko, runs the tool, and opens the PR.
+A complete addition touches **7 files** (both v3 and legacy formats). The Go tool in `tools/` (`go run .`) writes all of them in one command (`tools/add_currency.sh` runs it and downloads Go into a cache if it isn't installed). The `/add-currency <ClickUp task URL or ID>` skill (`.claude/skills/add-currency/SKILL.md`) wraps the full flow for PMs: reads the spec from ClickUp via the project's ClickUp MCP server (`.mcp.json`), verifies on CoinGecko, runs the tool, and opens the PR.
 
 ### Step 1 — Verify the CoinGecko ID first
 
@@ -20,12 +20,12 @@ Don't trust the symbol alone — multiple coins share tickers. Query `https://ap
 cd tools
 
 # New currency, one -platform KEY:ADDRESS per chain (addresses in original case)
-go run add_currency.go -symbol NIGHT -name Midnight --coingecko-id midnight-3 \
+go run . -symbol NIGHT -name Midnight --coingecko-id midnight-3 \
   -platform binance-smart-chain:0xfe930c2d63aed9b82fc4dbc801920dd2c1a3224f \
   -platform cardano:0691b2fecca1ac4f53cb6dfb00b7013e561d1f34403b957cbb5af1fa4e49474854
 
 # Add a platform to an existing currency (matched by symbol + exact name; CoinGecko ID reused)
-go run add_currency.go -symbol USDT -name Tether -platform polygon:0xc2132d05d31c914a87c6611c10748aeb04b58e8f
+go run . -symbol USDT -name Tether -platform polygon:0xc2132d05d31c914a87c6611c10748aeb04b58e8f
 
 # Append -dry-run to preview
 ```

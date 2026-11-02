@@ -7,7 +7,7 @@ description: Add a new cryptocurrency, or a new platform/chain for an existing o
 
 The person running this is often a **PM, not an engineer**. Talk in plain language in the user's language, never ask them to run commands or edit files, and don't show raw diffs unless asked. They decide *what* to list; you handle *how*.
 
-All data changes go through `tools/add_currency.sh` (wraps `add_currency.go`; downloads Go into a cache on first run if it isn't installed, so the user installs nothing). Never hand-edit the JSON data files.
+All data changes go through `tools/add_currency.sh` (wraps the Go tool in `tools/`; downloads Go into a cache on first run if it isn't installed, so the user installs nothing). Never hand-edit the JSON data files.
 
 ## 1. Read the ticket from ClickUp
 
