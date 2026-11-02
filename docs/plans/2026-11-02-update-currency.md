@@ -33,7 +33,7 @@ Today the tool only adds a currency or a chain; any existing value stops with `a
 - [x] ④ `-remove-platform KEY`
 - [x] ⑤ `-deactivate`, with optional `-delete-v3`
 - [x] Before → after dry-run output; rollback that also covers deleted files
-- [ ] `/add-currency` skill handles update tickets; error table, `tools/README.md`, `CLAUDE.md` updated
+- [x] `/add-currency` skill handles update tickets; error table, `tools/README.md`, `CLAUDE.md` updated
 
 ### Out of scope (explicit)
 
@@ -263,13 +263,13 @@ Repo convention (`CLAUDE.md`): branch `feat/<ticket>` from `dev` (here `feat/SYG
 ## 10. Done criteria
 
 - [ ] PRs 1–5 merged in order into `dev`, each with 2 approvals
-- [ ] `go test ./...` passes in `tools/`
-- [ ] Each change ①–⑤ works on the real repo in dry run and writes consistent files (`verify()` passes)
-- [ ] XAUT replay test passes
-- [ ] Any failed check leaves the repository unchanged (tested)
+- [x] `go test ./...` passes in `tools/`
+- [x] Each change ①–⑤ works on the real repo in dry run and writes consistent files (`verify()` passes)
+- [x] XAUT replay test passes
+- [x] Any failed check leaves the repository unchanged (tested)
 - [ ] `/add-currency` on an update ticket shows the before → after summary and opens a PR to `dev`
-- [ ] `tools/README.md`, `CLAUDE.md` and the skill describe update mode and `go run .`
-- [ ] No new TODOs without a ClickUp ticket
+- [x] `tools/README.md`, `CLAUDE.md` and the skill describe update mode and `go run .`
+- [x] No new TODOs without a ClickUp ticket
 
 ---
 

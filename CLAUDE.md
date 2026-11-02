@@ -63,6 +63,12 @@ For other chains: find the Sygna ID in `blockchain_name/mapping.json` (note: its
 - `coingecko_id/mapping.json` uses 4-space indent; `mapping_v3.json` and `id_mapping/*` use 2-space; all of these mapping files have **no trailing newline** — append with a targeted edit at the end of the array, don't rewrite/reformat the whole file.
 - Legacy `cryptocurrency/*.json` files are single-line compact JSON.
 
+## Updating, Removing or Delisting a Currency
+
+`tools/add_currency.sh -update -symbol <current SYM> -name '<current Name>' ...` changes an existing currency: `-set-address KEY:ADDRESS`, `-set-name`, `-set-symbol`, `-set-coingecko-id`, `-remove-platform KEY`, `-deactivate [-delete-v3]`. The `/add-currency` skill handles these tickets too. See `tools/README.md` → Update mode.
+
+Never delete or rename a legacy ID by hand: old IDs stay in every mapping file with `"is_active": false` (replacing the Aptos legacy ID broke mapping in SYGN-18584).
+
 ## Data Formats
 
 ### v3 (current) — `cryptocurrency_v3/<SYMBOL>.json`
