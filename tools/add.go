@@ -104,6 +104,42 @@ type adder struct {
 	platforms []platformSpec
 }
 
+// matchCurrency returns the index of the currency named name in v3File's
+// currencies, or -1 if there is none. Some symbol files hold several
+// currencies with the exact same name (e.g. SPA.json has three "Sperax"), so
+// it never silently picks the first.
+func matchCurrency(currencies []Currency, name, uuid, v3File string) (int, error) {
+	var exact []int
+	caseOnly := ""
+	for i := range currencies {
+		switch {
+		case currencies[i].Name == name:
+			exact = append(exact, i)
+		case strings.EqualFold(currencies[i].Name, name):
+			caseOnly = currencies[i].Name
+		}
+	}
+	switch {
+	case len(exact) == 1:
+		if uuid != "" && uuid != currencies[exact[0]].ID {
+			return -1, fmt.Errorf("-uuid %s does not match existing %q (%s)", uuid, name, currencies[exact[0]].ID)
+		}
+		return exact[0], nil
+	case len(exact) > 1:
+		var ids []string
+		for _, i := range exact {
+			ids = append(ids, currencies[i].ID)
+			if currencies[i].ID == uuid {
+				return i, nil
+			}
+		}
+		return -1, fmt.Errorf("%s has %d currencies named %q (%s); pass -uuid to choose one", v3File, len(exact), name, strings.Join(ids, ", "))
+	case caseOnly != "":
+		return -1, fmt.Errorf("%s already has currency %q (differs only in case from %q); use the exact existing name", v3File, caseOnly, name)
+	}
+	return -1, nil
+}
+
 func (a *adder) run(dryRun bool) error {
 	v3File := fmt.Sprintf("cryptocurrency_v3/%s.json", a.symbol)
 	var currencies []Currency
@@ -115,38 +151,13 @@ func (a *adder) run(dryRun bool) error {
 		return err
 	}
 
-	// Some symbol files hold several currencies with the exact same name
-	// (e.g. SPA.json has three "Sperax"), so never silently pick the first.
-	var exact []int
-	caseOnly := ""
-	for i := range currencies {
-		switch {
-		case currencies[i].Name == a.name:
-			exact = append(exact, i)
-		case strings.EqualFold(currencies[i].Name, a.name):
-			caseOnly = currencies[i].Name
-		}
-	}
 	var target *Currency
-	switch {
-	case len(exact) == 1:
-		target = &currencies[exact[0]]
-		if a.uuid != "" && a.uuid != target.ID {
-			return fmt.Errorf("-uuid %s does not match existing %q (%s)", a.uuid, a.name, target.ID)
-		}
-	case len(exact) > 1:
-		var ids []string
-		for _, i := range exact {
-			ids = append(ids, currencies[i].ID)
-			if currencies[i].ID == a.uuid {
-				target = &currencies[i]
-			}
-		}
-		if target == nil {
-			return fmt.Errorf("%s has %d currencies named %q (%s); pass -uuid to choose one", v3File, len(exact), a.name, strings.Join(ids, ", "))
-		}
-	case caseOnly != "":
-		return fmt.Errorf("%s already has currency %q (differs only in case from %q); use the exact existing name", v3File, caseOnly, a.name)
+	i, err := matchCurrency(currencies, a.name, a.uuid, v3File)
+	if err != nil {
+		return err
+	}
+	if i >= 0 {
+		target = &currencies[i]
 	}
 
 	cgV3, err := a.loadCoingeckoV3()
@@ -285,22 +296,14 @@ func (a *adder) plan(target *Currency) error {
 			return fmt.Errorf("address %s on %s is already used by %s", addr, key, owner)
 		}
 
-		sygnaID, err := a.resolveSygnaID(key)
+		sygnaID, err := a.resolveSygnaID(a.overrides, key)
 		if err != nil {
 			return err
 		}
-		plat, ok := legacyIndex.platformFor(sygnaID)
-		if !ok {
-			return fmt.Errorf("no existing legacy token on %s (%s) to copy platform name/symbol from; add this platform manually", key, sygnaID)
+		lp, err := newLegacyPlan(legacyIndex, key, sygnaID, addr)
+		if err != nil {
+			return err
 		}
-		legacyAddr := addr
-		lp := &legacyPlan{
-			sygnaID:  sygnaID,
-			address:  legacyAddr,
-			id:       sygnaID + "." + legacyAddr,
-			platform: LegacyPlatform{Name: plat.Name, Symbol: plat.Symbol, TokenAddress: legacyAddr, ID: sygnaID},
-		}
-		lp.filename = "cryptocurrency/sygna-" + strings.TrimPrefix(lp.id, "sygna:") + ".json"
 
 		if orig, dup := existingIDs[strings.ToLower(lp.id)]; dup {
 			return fmt.Errorf("legacy ID %s already mapped in old_to_new_id_mapping.json", orig)
@@ -310,20 +313,37 @@ func (a *adder) plan(target *Currency) error {
 		}
 		spec.legacy = lp
 		a.platforms = append(a.platforms, spec)
-		log.Printf("%s → %s (%s / %s)", key, lp.id, plat.Name, plat.Symbol)
+		log.Printf("%s → %s (%s / %s)", key, lp.id, lp.platform.Name, lp.platform.Symbol)
 	}
 	return nil
 }
 
-func (a *adder) resolveSygnaID(key string) (string, error) {
-	if id, ok := a.overrides[key]; ok {
+// newLegacyPlan describes the legacy file for a token address on sygnaID,
+// copying the platform name/symbol from existing tokens on that chain.
+func newLegacyPlan(idx *legacyIndex, key, sygnaID, addr string) (*legacyPlan, error) {
+	plat, ok := idx.platformFor(sygnaID)
+	if !ok {
+		return nil, fmt.Errorf("no existing legacy token on %s (%s) to copy platform name/symbol from; add this platform manually", key, sygnaID)
+	}
+	lp := &legacyPlan{
+		sygnaID:  sygnaID,
+		address:  addr,
+		id:       sygnaID + "." + addr,
+		platform: LegacyPlatform{Name: plat.Name, Symbol: plat.Symbol, TokenAddress: addr, ID: sygnaID},
+	}
+	lp.filename = "cryptocurrency/sygna-" + strings.TrimPrefix(lp.id, "sygna:") + ".json"
+	return lp, nil
+}
+
+func (r *repo) resolveSygnaID(overrides map[string]string, key string) (string, error) {
+	if id, ok := overrides[key]; ok {
 		return id, nil
 	}
 	if id, ok := knownSygnaIDs[key]; ok {
 		return id, nil
 	}
 	var names map[string]string
-	data, err := os.ReadFile(a.path("blockchain_name/mapping.json"))
+	data, err := os.ReadFile(r.path("blockchain_name/mapping.json"))
 	if err != nil {
 		return "", err
 	}
@@ -425,8 +445,8 @@ func (a *adder) stageMappings(cgV3 map[string]string) error {
 
 // appendEntry appends entry text to the top-level array/object of a file,
 // leaving every existing byte untouched apart from the inserted comma.
-func (a *adder) appendEntry(rel string, closing byte, closingIndent, entry string) error {
-	data, err := a.read(rel)
+func (r *repo) appendEntry(rel string, closing byte, closingIndent, entry string) error {
+	data, err := r.read(rel)
 	if err != nil {
 		return err
 	}
@@ -434,7 +454,7 @@ func (a *adder) appendEntry(rel string, closing byte, closingIndent, entry strin
 	if err != nil {
 		return fmt.Errorf("%s: %v", rel, err)
 	}
-	a.stage(rel, out)
+	r.stage(rel, out)
 	return nil
 }
 
