@@ -85,6 +85,32 @@ func (p *Platforms) Add(key string, info PlatformInfo) {
 	p.m[key] = info
 }
 
+// Key returns the stored spelling of key, ignoring case.
+func (p *Platforms) Key(key string) (string, bool) {
+	for _, k := range p.keys {
+		if strings.EqualFold(k, key) {
+			return k, true
+		}
+	}
+	return "", false
+}
+
+// Set replaces the value of an existing key, keeping its position.
+func (p *Platforms) Set(key string, info PlatformInfo) {
+	p.m[key] = info
+}
+
+// Remove deletes key, keeping the order of the others.
+func (p *Platforms) Remove(key string) {
+	for i, k := range p.keys {
+		if k == key {
+			p.keys = append(p.keys[:i:i], p.keys[i+1:]...)
+			delete(p.m, key)
+			return
+		}
+	}
+}
+
 type Currency struct {
 	ID        string    `json:"id"`
 	Symbol    string    `json:"symbol"`

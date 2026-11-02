@@ -22,12 +22,19 @@ func TestMain(m *testing.M) {
 // copyRepo copies testdata/repo into a temp dir and returns its path.
 func copyRepo(t *testing.T) string {
 	t.Helper()
+	return copyFixture(t, "repo")
+}
+
+// copyFixture copies testdata/<name> into a temp dir and returns its path.
+func copyFixture(t *testing.T, name string) string {
+	t.Helper()
+	src := filepath.Join("testdata", name)
 	dst := t.TempDir()
-	err := filepath.WalkDir("testdata/repo", func(p string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(src, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		rel, _ := filepath.Rel("testdata/repo", p)
+		rel, _ := filepath.Rel(src, p)
 		if d.IsDir() {
 			return os.MkdirAll(filepath.Join(dst, rel), 0o755)
 		}

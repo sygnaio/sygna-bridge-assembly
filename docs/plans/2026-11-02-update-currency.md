@@ -26,13 +26,13 @@ Today the tool only adds a currency or a chain; any existing value stops with `a
 
 - [x] Split `add_currency.go` into several files in `package main`; run with `go run .`
 - [x] Go test harness with a small fixture repository; tests for the existing add flow
-- [ ] `-update` mode that locates a currency by `-symbol` + `-name` (+ `-uuid`) and never creates one
-- [ ] ① `-set-address KEY:ADDR` (token chains)
-- [ ] ② `-set-name`, `-set-symbol` (v3 + every legacy file of the UUID, incl. native and inactive ones)
-- [ ] ③ `-set-coingecko-id`
-- [ ] ④ `-remove-platform KEY`
-- [ ] ⑤ `-deactivate`, with optional `-delete-v3`
-- [ ] Before → after dry-run output; rollback that also covers deleted files
+- [x] `-update` mode that locates a currency by `-symbol` + `-name` (+ `-uuid`) and never creates one
+- [x] ① `-set-address KEY:ADDR` (token chains)
+- [x] ② `-set-name`, `-set-symbol` (v3 + every legacy file of the UUID, incl. native and inactive ones)
+- [x] ③ `-set-coingecko-id`
+- [x] ④ `-remove-platform KEY`
+- [x] ⑤ `-deactivate`, with optional `-delete-v3`
+- [x] Before → after dry-run output; rollback that also covers deleted files
 - [ ] `/add-currency` skill handles update tickets; error table, `tools/README.md`, `CLAUDE.md` updated
 
 ### Out of scope (explicit)
@@ -164,6 +164,8 @@ sequenceDiagram
 
 ## 7. PR Breakdown
 
+> **2026-11-02 change:** PRs 2–5 are folded into PR 1 ([#251](https://github.com/sygnaio/sygna-bridge-assembly/pull/251)) at the owner's request. The PR sections below are kept as the order of work inside #251.
+
 Line estimates exclude `testdata/` fixtures. All PRs target `dev`.
 
 Repo convention (`CLAUDE.md`): branch `feat/<ticket>` from `dev` (here `feat/SYGN-15024-<slug>`, one per PR, using the parent ticket), commit subjects `<type>: SYGN-15024 <summary>`, and **squash to a single commit before opening the PR**. The commit lists below are the work steps inside each PR; tick them as they are done, then squash.
@@ -243,7 +245,7 @@ Repo convention (`CLAUDE.md`): branch `feat/<ticket>` from `dev` (here `feat/SYG
   - Each change type on a fixture repo in `testdata/repo/` copied to `t.TempDir()`: expected files after the run, and `verify()` passes.
   - Every pre-write check has a failure test that asserts no file in the temp repo changed (hash before/after).
   - Rollback: inject a write failure midway (unwritable directory) and assert originals, including deleted files, are restored.
-- **Replay tests**: fixtures built from the parent commits of `3e19eee` (XAUT, ①) and `b112f39` (KLAY → Kaia, ② + ③), trimmed to the touched currency; output must equal the historical commit except old legacy files kept as `is_active: false`.
+- **Replay test**: a fixture built from the parent of `3e19eee` (XAUT, ①); the new legacy file and the `new_to_old` line must equal that commit, while the old legacy ID is kept as `is_active: false` (the commit deleted it). KLAY → Kaia (`b112f39`, 2025-01) predates `cryptocurrency_v3/`, so ② + ③ are tested on the main fixture instead.
 - **Integration**: the PR CI (`assembly-handler` `npm run check`) is a no-op today (`src/checker.ts` only logs), so it validates nothing. Each PR is instead dry-run against the real repo and checked with `verify()`. `merger.ts` (deploy) looks up `mapping_v3` from v3 currencies, so entries left by `-delete-v3` are ignored.
 - **Manual verification**: after PR 5, a PM runs `/add-currency` on one test ticket per change type and stops at the dry-run summary; one real update ticket goes all the way to a PR.
 - **Not tested**: CoinGecko lookups and ClickUp/GitHub calls inside the skill (the skill is prompt instructions, verified manually); `add_currency.sh` Go download (unchanged).
@@ -263,7 +265,7 @@ Repo convention (`CLAUDE.md`): branch `feat/<ticket>` from `dev` (here `feat/SYG
 - [ ] PRs 1–5 merged in order into `dev`, each with 2 approvals
 - [ ] `go test ./...` passes in `tools/`
 - [ ] Each change ①–⑤ works on the real repo in dry run and writes consistent files (`verify()` passes)
-- [ ] XAUT and KLAY → Kaia replay tests pass
+- [ ] XAUT replay test passes
 - [ ] Any failed check leaves the repository unchanged (tested)
 - [ ] `/add-currency` on an update ticket shows the before → after summary and opens a PR to `dev`
 - [ ] `tools/README.md`, `CLAUDE.md` and the skill describe update mode and `go run .`
@@ -281,3 +283,6 @@ Repo convention (`CLAUDE.md`): branch `feat/<ticket>` from `dev` (here `feat/SYG
 - 2026-11-02 — Plan lives in `docs/plans/` of this repo.
 - 2026-11-02 — Found that the `assembly-handler` PR check is a no-op (`src/checker.ts` is a TODO); dropped "green CI" from done criteria and the `-delete-v3` CI risk, since `merger.ts` ignores orphan `mapping_v3` entries.
 - 2026-11-02 — Branches and commits use the parent ticket SYGN-15024 (not SYGN-15034's task id), per the owner.
+- 2026-11-02 — PRs 2–5 folded into #251 at the owner's request.
+- 2026-11-02 — KLAY → Kaia replay dropped: it predates v3. XAUT replay kept.
+- 2026-11-02 — Legacy files are edited field by field (27 legacy files are not single-line JSON), never re-encoded.

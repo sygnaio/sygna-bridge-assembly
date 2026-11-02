@@ -1,6 +1,6 @@
 # Test fixtures — not real data
 
-`repo/` is a small copy of the assembly data used only by the Go tests in `tools/` (`go test ./...`). Each test copies it to a temp directory and runs the tool there, so these files are never changed and never shipped.
+`repo/` and `xaut/` are small copies of the assembly data used only by the Go tests in `tools/` (`go test ./...`). Each test copies it to a temp directory and runs the tool there, so these files are never changed and never shipped.
 
 - **Not deployed.** `sygna-bridge-assembly-handler` only reads the top-level data folders (`cryptocurrency/`, `cryptocurrency_v3/`, `coingecko_id/`, `id_mapping/`, …), not `tools/testdata/`.
 - **Not a currency listing.** Adding or editing files here does not add or change any currency.
@@ -17,3 +17,7 @@ A subset of the real data, copied as is on 2026-11-02, with the mapping files cu
 | MV | a Polygon token, so tests can add a Polygon platform |
 
 `blockchain_name/mapping.json` keeps only the chains these currencies use, plus `Kaia` (a chain with no legacy token here).
+
+## What is in `xaut/`
+
+Tether Gold (XAUT) as it was before commit `3e19eee` (SYGN-18577), which changed its Ethereum contract by hand. `TestReplayXAUTAddressChange` replays that change with `-update -set-address` and compares the result with the commit.

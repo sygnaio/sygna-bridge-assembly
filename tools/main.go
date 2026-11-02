@@ -26,7 +26,75 @@ func main() {
 	fixedUUID := flag.String("uuid", "", "UUID for a new currency, or to choose among existing currencies with the same name")
 	root := flag.String("root", "..", "Repository root")
 	dryRun := flag.Bool("dry-run", false, "Print the planned changes without writing")
+
+	var setAddressFlags, removeFlags repeated
+	update := flag.Bool("update", false, "Change an existing currency (found by -symbol, -name and optional -uuid) instead of adding")
+	flag.Var(&setAddressFlags, "set-address", "With -update: new token address as KEY:ADDRESS (repeatable)")
+	setName := flag.String("set-name", "", "With -update: new currency name")
+	setSymbol := flag.String("set-symbol", "", "With -update: new currency symbol")
+	setCoingeckoID := flag.String("set-coingecko-id", "", "With -update: new CoinGecko ID")
+	flag.Var(&removeFlags, "remove-platform", "With -update: platform key to remove (repeatable)")
+	deactivate := flag.Bool("deactivate", false, "With -update: delist the currency (all legacy files become inactive)")
+	deleteV3 := flag.Bool("delete-v3", false, "With -deactivate: also remove the currency from cryptocurrency_v3")
 	flag.Parse()
+
+	overrides := map[string]string{}
+	for _, s := range sygnaIDFlags {
+		k, v, ok := strings.Cut(s, "=")
+		if !ok || !strings.HasPrefix(v, "sygna:") {
+			log.Fatalf("Error: invalid -sygna-id %q, expected KEY=sygna:...", s)
+		}
+		overrides[strings.ToLower(strings.TrimSpace(k))] = strings.TrimSpace(v)
+	}
+
+	updateOnly := len(setAddressFlags) > 0 || len(removeFlags) > 0 || *setName != "" || *setSymbol != "" || *setCoingeckoID != "" || *deactivate || *deleteV3
+	if *update {
+		if *symbol == "" || *name == "" {
+			fmt.Println("Usage: go run . -update -symbol SYMBOL -name NAME [-uuid UUID] CHANGE... [-dry-run]")
+			fmt.Println("\nChanges: -set-address KEY:ADDRESS, -set-name NAME, -set-symbol SYMBOL, -set-coingecko-id ID, -remove-platform KEY, -deactivate [-delete-v3]")
+			fmt.Println("\nExample:")
+			fmt.Println("go run . -update -symbol XAUT -name 'Tether Gold' -set-address ethereum:0x68749665FF8D2d112Fa859AA293F07A622782F38 -dry-run")
+			os.Exit(1)
+		}
+		if len(platformFlags) > 0 || *tokenAddress != "" || *coingeckoID != "" {
+			log.Fatalf("Error: -platform, --token-address and --coingecko-id are for adding; with -update use -set-address, -remove-platform or -set-coingecko-id")
+		}
+		u := &updater{
+			repo:           newRepo(*root),
+			symbol:         strings.ToUpper(strings.TrimSpace(*symbol)),
+			name:           strings.TrimSpace(*name),
+			uuid:           strings.TrimSpace(*fixedUUID),
+			overrides:      overrides,
+			allowSharedCG:  *allowSharedCG,
+			setName:        strings.TrimSpace(*setName),
+			setSymbol:      strings.ToUpper(strings.TrimSpace(*setSymbol)),
+			setCoingeckoID: strings.ToLower(strings.TrimSpace(*setCoingeckoID)),
+			deactivate:     *deactivate,
+			deleteV3:       *deleteV3,
+		}
+		for _, p := range setAddressFlags {
+			key, addr, ok := strings.Cut(p, ":")
+			key = strings.ToLower(strings.TrimSpace(key))
+			if !ok || !platformKeyRe.MatchString(key) {
+				log.Fatalf("Error: invalid -set-address %q, expected KEY:ADDRESS", p)
+			}
+			u.setAddress = append(u.setAddress, [2]string{key, strings.TrimSpace(addr)})
+		}
+		for _, key := range removeFlags {
+			key = strings.ToLower(strings.TrimSpace(key))
+			if !platformKeyRe.MatchString(key) {
+				log.Fatalf("Error: invalid -remove-platform %q", key)
+			}
+			u.removePlatforms = append(u.removePlatforms, key)
+		}
+		if err := u.run(*dryRun); err != nil {
+			log.Fatalf("Error: %v", err)
+		}
+		return
+	}
+	if updateOnly {
+		log.Fatalf("Error: -set-*, -remove-platform, -deactivate and -delete-v3 need -update")
+	}
 
 	if *symbol == "" || *name == "" || len(platformFlags) == 0 {
 		fmt.Println("Usage: go run . -symbol SYMBOL -name NAME -platform KEY:ADDRESS [-platform KEY:ADDRESS ...] [--coingecko-id ID] [-dry-run]")
@@ -40,15 +108,6 @@ func main() {
 	if !symbolRe.MatchString(normSymbol) || strings.Contains(normSymbol, "..") {
 		log.Fatalf("Error: invalid -symbol %q: only A-Z, 0-9, '$', '.', '_' and '-' are allowed", *symbol)
 	}
-	overrides := map[string]string{}
-	for _, s := range sygnaIDFlags {
-		k, v, ok := strings.Cut(s, "=")
-		if !ok || !strings.HasPrefix(v, "sygna:") {
-			log.Fatalf("Error: invalid -sygna-id %q, expected KEY=sygna:...", s)
-		}
-		overrides[strings.ToLower(strings.TrimSpace(k))] = strings.TrimSpace(v)
-	}
-
 	a := &adder{
 		repo:          newRepo(*root),
 		symbol:        normSymbol,
