@@ -98,8 +98,8 @@ On errors, explain in plain language:
 | `already exists` / `already mapped` / `already used by` | Already listed (or the address belongs to another currency) — tell the user, stop. If `git status` shows uncommitted data changes, a previous run was interrupted — needs an engineer |
 | `has N currencies named` | Several currencies share this exact name — show the user each UUID (and its existing chains/CoinGecko ID) and ask which one; re-run with `-uuid <id>` |
 | `differs only in case` | The currency exists under a slightly different name — re-run with the exact existing name |
-| `already mapped to currency` (CoinGecko ID) | Another currency already uses this CoinGecko ID — confirm with the user whether this is really a separate currency; only then add `-allow-shared-coingecko-id` |
-| `invalid address` / `invalid -symbol` / `missing address` | The ticket value is malformed — show it to the user and ask for the correct one |
+| `already mapped to currency` (CoinGecko ID) | Another currency already uses this CoinGecko ID. When adding: confirm with the user that this is really a separate currency. For ③: confirm that both currencies really are the same coin on CoinGecko. Only then add `-allow-shared-coingecko-id` |
+| `invalid address` / `invalid -symbol` / `invalid -set-symbol` / `missing address` | The ticket value is malformed — show it to the user and ask for the correct one |
 | `cannot find Sygna ID` / `matches several Sygna IDs` | Look it up in `blockchain_name/mapping.json`; if one clear match, confirm and re-run with `-sygna-id <key>=sygna:...`, otherwise needs an engineer |
 | `no existing legacy token on ...` | First token on this chain — needs an engineer; stop |
 | native platform warning | Legacy native files are manual — needs an engineer |
@@ -107,6 +107,7 @@ On errors, explain in plain language:
 | `has no <key> platform` (update) | The currency isn't on that chain — check the chain with the user |
 | `native platforms must be changed manually` | Changing a native chain — needs an engineer; stop |
 | `already uses address` / `already uses CoinGecko ID` / `name and symbol are already` | Nothing to change — tell the user, stop |
+| `legacy ID ... already mapped` / `legacy file already exists` (①) | The new address was used before (now kept as inactive); the tool cannot re-activate it — needs an engineer; stop |
 | `already has a currency named` | Another currency already has that name in the target symbol file — ask the user |
 | `use -deactivate to delist it` | Removing the last chain means delisting — confirm with the user, then use ⑤ |
 | `no active legacy files` | Already delisted — tell the user, stop |

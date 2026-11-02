@@ -1,0 +1,15 @@
+[
+  {
+    "id": "058e24d8-4f85-46dd-83e5-bcebff3e7f9e",
+    "symbol": "BORA",
+    "name": "BORA",
+    "platforms": {
+      "Kaia": {
+        "token_address": "0x02cbe46fb8a1f579254a9b485788f2d86cad51aa"
+      },
+      "polygon": {
+        "token_address": "0x02cbe46fb8a1f579254a9b485788f2d86cad51aa"
+      }
+    }
+  }
+]

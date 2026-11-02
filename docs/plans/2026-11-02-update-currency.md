@@ -253,7 +253,7 @@ Repo convention (`CLAUDE.md`): branch `feat/<ticket>` from `dev` (here `feat/SYG
 ## 9. Risks & open questions
 
 - **Assumption**: native platforms are excluded from ① (engineer does it manually); ② and ⑤ still edit native legacy files because only fields change — if PMs need native address changes, add it later.
-- **Assumption**: `old_to_new` lists every legacy ID of a currency (verified on `dev`: 2,454 entries, all with a legacy file) — if not, ② / ⑤ would miss files; `verify()` cross-checks v3 → `new_to_old` → files.
+- **Assumption**: `old_to_new` lists every legacy ID of a currency (verified on `dev`: 2,454 entries, all with a legacy file) — if not, ② / ⑤ would miss files. `verify()` only cross-checks the entries the run changed (pre-existing inconsistencies elsewhere must not block an update).
 - **Assumption**: `-update` refuses ambiguous locates exactly like add (same-name currencies need `-uuid`).
 - **Risk**: no CI validates data consistency (`checker.ts` is a TODO) — mitigation: `verify()` cross-checks plus tests for every change type, and a real-repo dry run per PR. `CLAUDE.md` still says CI validates PRs; fixing that is outside this plan.
 - **Risk**: PR 1's move makes a big diff — mitigation: move commit has no logic changes; tests land in the same PR and pass before and after.
@@ -286,3 +286,4 @@ Repo convention (`CLAUDE.md`): branch `feat/<ticket>` from `dev` (here `feat/SYG
 - 2026-11-02 — PRs 2–5 folded into #251 at the owner's request.
 - 2026-11-02 — KLAY → Kaia replay dropped: it predates v3. XAUT replay kept.
 - 2026-11-02 — Legacy files are edited field by field (27 legacy files are not single-line JSON), never re-encoded.
+- 2026-11-02 — Review fixes: platform keys matched case-insensitively in ① (v3 "Kaia" vs new_to_old "kaia"), `-symbol` validated in update mode, `mapping.json` staged only when changed, ② verify checks only what changed; docs and skill error table corrected.

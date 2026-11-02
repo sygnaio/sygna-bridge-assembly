@@ -311,8 +311,8 @@ func TestAddRejectsWithoutWriting(t *testing.T) {
 			return newAdder(r, "TST", "Test Token", "test-token", "", "zilliqa:../../etc")
 		}, "must not contain"},
 		{"chain without an existing legacy token", func(r string) *adder {
-			return newAdder(r, "TST", "Test Token", "test-token", "", "kaia:"+tstETH)
-		}, "no existing legacy token on kaia"},
+			return newAdder(r, "TST", "Test Token", "test-token", "", "hyperevm:"+tstETH)
+		}, "no existing legacy token on hyperevm"},
 		{"platform given twice", func(r string) *adder {
 			return newAdder(r, "TST", "Test Token", "test-token", "", "ethereum:"+tstETH, "ethereum:"+tstBSC)
 		}, `platform "ethereum" given twice`},

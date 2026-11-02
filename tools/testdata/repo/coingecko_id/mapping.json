@@ -4,8 +4,16 @@
         "coingecko_id": "gensokishis-metaverse"
     },
     {
+        "currency_id": "sygna:0x800003c6.0x02cbe46fb8a1f579254a9b485788f2d86cad51aa",
+        "coingecko_id": "bora"
+    },
+    {
         "currency_id": "sygna:0x800003c6.0xa3c322ad15218fbfaed26ba7f616249f7705d945",
         "coingecko_id": "gensokishis-metaverse"
+    },
+    {
+        "currency_id": "sygna:0x80002019.0x02cbe46fb8a1f579254a9b485788f2d86cad51aa",
+        "coingecko_id": "bora"
     },
     {
         "currency_id": "sygna:0x8000003c.0x0000000000004946c0e9f43f4dee607b0ef1fa1c",

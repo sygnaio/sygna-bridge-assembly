@@ -46,7 +46,9 @@ type updater struct {
 	legacyIDs   []string          // every legacy ID mapped to the currency
 	cgTouched   map[string]bool   // legacy IDs whose mapping.json entry was set
 	newLegacy   map[string]bool   // legacy IDs added by ①
-	addressSet  map[string]string // platform key → new address (①)
+	addressSet  map[string]string // v3 platform key → new legacy ID (①)
+	nameSet     bool              // ② changed the name
+	symbolSet   bool              // ② changed the symbol
 	removed     []string          // platform keys removed (④)
 }
 
@@ -133,6 +135,9 @@ func (u *updater) checkFlags() error {
 		return fmt.Errorf("-deactivate cannot be combined with other changes")
 	case !u.deactivate && changes == 0:
 		return fmt.Errorf("nothing to update: pass -set-address, -set-name, -set-symbol, -set-coingecko-id, -remove-platform or -deactivate")
+	}
+	if !symbolRe.MatchString(u.symbol) || strings.Contains(u.symbol, "..") {
+		return fmt.Errorf("invalid -symbol %q: only A-Z, 0-9, '$', '.', '_' and '-' are allowed", u.symbol)
 	}
 	if u.setSymbol != "" && (!symbolRe.MatchString(u.setSymbol) || strings.Contains(u.setSymbol, "..")) {
 		return fmt.Errorf("invalid -set-symbol %q: only A-Z, 0-9, '$', '.', '_' and '-' are allowed", u.setSymbol)
@@ -338,17 +343,20 @@ func (u *updater) updateCoingeckoID() error {
 	if data, err = u.read(legacyMap); err != nil {
 		return err
 	}
+	changed := false
 	for _, lid := range u.legacyIDs {
 		out, _, found, err := setCoingeckoID(data, lid, id)
 		if err != nil {
 			return fmt.Errorf("%s: %v", legacyMap, err)
 		}
 		if found {
-			data = out
+			data, changed = out, true
 			u.cgTouched[lid] = true
 		}
 	}
-	u.stage(legacyMap, data)
+	if changed {
+		u.stage(legacyMap, data)
+	}
 	log.Printf("CoinGecko ID %q → %q", u.coingeckoID, id)
 	u.coingeckoID = id
 	return nil
@@ -393,6 +401,7 @@ func (u *updater) updateNameSymbol() error {
 		}
 	}
 	log.Printf("%q (%s) → %q (%s)", u.target.Name, u.target.Symbol, name, symbol)
+	u.nameSet, u.symbolSet = name != u.target.Name, symbol != u.target.Symbol
 	u.target.Name, u.target.Symbol = name, symbol
 	u.v3Changed = true
 	return nil
@@ -413,7 +422,10 @@ func (u *updater) updateAddress(key, addr string) error {
 	case strings.EqualFold(old, addr):
 		return fmt.Errorf("%s already uses address %s", k, old)
 	}
-	if err := validateAddress(k, addr); err != nil {
+	// v3 keys are not always lowercase (e.g. "Kaia"); validation, address
+	// lookups and new_to_old use the lowercase key.
+	lk := strings.ToLower(k)
+	if err := validateAddress(lk, addr); err != nil {
 		return err
 	}
 	if evmAddressRe.MatchString(addr) {
@@ -423,10 +435,10 @@ func (u *updater) updateAddress(key, addr string) error {
 	if err != nil {
 		return err
 	}
-	if owner, dup := used[strings.ToLower(k)+"|"+strings.ToLower(addr)]; dup {
+	if owner, dup := used[lk+"|"+strings.ToLower(addr)]; dup {
 		return fmt.Errorf("address %s on %s is already used by %s", addr, k, owner)
 	}
-	sygnaID, err := u.resolveSygnaID(u.overrides, strings.ToLower(k))
+	sygnaID, err := u.resolveSygnaID(u.overrides, lk)
 	if err != nil {
 		return err
 	}
@@ -475,7 +487,7 @@ func (u *updater) updateAddress(key, addr string) error {
 		err = u.editN2O(func(obj []byte) ([]byte, error) { return setField(obj, n2oKey, lp.id) })
 	} else {
 		err = u.editN2O(func(obj []byte) ([]byte, error) {
-			return appendToContainer(obj, '}', "  ", fmt.Sprintf("    %s: %s", quote(k), quote(lp.id)))
+			return appendToContainer(obj, '}', "  ", fmt.Sprintf("    %s: %s", quote(lk), quote(lp.id)))
 		})
 	}
 	if err != nil {
@@ -656,10 +668,10 @@ func (u *updater) verify() error {
 		if lc.CurrencyID != id {
 			return fmt.Errorf("%s: currency_id %q, want %q", u.legacyFile(id), lc.CurrencyID, id)
 		}
-		if u.setName != "" && lc.CurrencyName != u.target.Name {
+		if u.nameSet && lc.CurrencyName != u.target.Name {
 			return fmt.Errorf("%s: currency_name %q, want %q", u.legacyFile(id), lc.CurrencyName, u.target.Name)
 		}
-		if u.setSymbol != "" && lc.CurrencySymbol != u.target.Symbol {
+		if u.symbolSet && lc.CurrencySymbol != u.target.Symbol {
 			return fmt.Errorf("%s: currency_symbol %q, want %q", u.legacyFile(id), lc.CurrencySymbol, u.target.Symbol)
 		}
 		if u.deactivate && lc.IsActive {
@@ -697,8 +709,14 @@ func (u *updater) verify() error {
 		}
 	}
 	for k, id := range u.addressSet {
-		if n2o[u.uuid][k] != id {
-			return fmt.Errorf("new_to_old: %s.%s → %q, want %s", u.uuid, k, n2o[u.uuid][k], id)
+		got := ""
+		for nk, v := range n2o[u.uuid] {
+			if strings.EqualFold(nk, k) {
+				got = v
+			}
+		}
+		if got != id {
+			return fmt.Errorf("new_to_old: %s.%s → %q, want %s", u.uuid, k, got, id)
 		}
 		data, err := u.read(u.legacyFile(id))
 		if err != nil {

@@ -15,8 +15,9 @@ A subset of the real data, copied as is on 2026-11-02, with the mapping files cu
 | CHI | one symbol file with two currencies; a `sygna:` file name and a native chain |
 | SPA | three currencies with the same name (needs `-uuid`) |
 | MV | a Polygon token, so tests can add a Polygon platform |
+| BORA | v3 key `"Kaia"` but `new_to_old` key `"kaia"` (like KAIA, MBX and SSX in the real data) |
 
-`blockchain_name/mapping.json` keeps only the chains these currencies use, plus `Kaia` (a chain with no legacy token here).
+`blockchain_name/mapping.json` keeps only the chains these currencies use, plus `hyperevm` (a chain with no legacy token here).
 
 ## What is in `xaut/`
 

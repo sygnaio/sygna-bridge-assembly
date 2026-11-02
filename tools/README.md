@@ -88,19 +88,20 @@ Check CoinGecko's site, e.g. https://www.coingecko.com/en/coins/bitcoin, and fin
 | `-delete-v3` | With `-deactivate`: also removes the currency from `cryptocurrency_v3` |
 
 ```bash
-# ① New contract on Ethereum
-go run . -update -symbol XAUT -name 'Tether Gold' -set-address ethereum:0x68749665FF8D2d112Fa859AA293F07A622782F38 -dry-run
+# ① New contract on Ethereum (placeholder address)
+go run . -update -symbol XAUT -name 'Tether Gold' -set-address ethereum:0x0000000000000000000000000000000000000001 -dry-run
 
-# ② + ③ Rename and change CoinGecko ID
-go run . -update -symbol KLAY -name KLAY -set-name Kaia -set-symbol KAIA -set-coingecko-id kaia -dry-run
+# ② + ③ Rename, new symbol and new CoinGecko ID (placeholder values)
+go run . -update -symbol ZIL -name Zilliqa -set-name 'Zilliqa Coin' -set-symbol ZILQ -set-coingecko-id zilliqa-coin -dry-run
 
 # ⑤ Delist and remove from v3
 go run . -update -symbol ZIL -name Zilliqa -deactivate -delete-v3 -dry-run
 ```
 
-- **Old legacy IDs are never deleted or renamed** — Bridge may still resolve them, so they stay in every mapping file with `"is_active": false`.
+- **Old legacy IDs are never deleted or renamed** — Bridge may still resolve them, so they stay in every mapping file with `"is_active": false`. They cannot be re-activated by the tool: `-set-address` back to an old address fails with `already mapped`.
 - **Legacy files are edited field by field**, keeping each file's formatting; mapping files only change the affected lines.
+- **Platform keys** are matched case-insensitively (v3 has e.g. `"Kaia"` where `new_to_old` has `"kaia"`).
 - **Native platforms**: ① refuses native chains (change them manually); ② and ⑤ edit native legacy files like any other.
 - **Dry run** lists each file as `add` / `modify` / `delete`, then the currency before → after.
-- **Checks before writing**: the currency and chain exist; a new address is valid and unused on that chain; a new name is unique in the symbol file; a new CoinGecko ID is not used by another currency (unless `-allow-shared-coingecko-id`). After staging, the tool cross-checks v3, legacy and mapping files and writes nothing if anything disagrees.
+- **Checks before writing**: `-symbol` / `-set-symbol` are valid symbols; the currency and chain exist; a new address is valid and unused on that chain; a new name is unique in the symbol file; a new CoinGecko ID is not used by another currency (unless `-allow-shared-coingecko-id`). After staging, the tool cross-checks the v3, legacy and mapping entries it changed and writes nothing if anything disagrees.
 - **Known formats**: `cryptocurrency_v3/GRAM.json` is a single object rather than an array, so updating GRAM fails safely; `JPYSC.json` is reformatted on its first update.

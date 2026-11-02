@@ -235,6 +235,8 @@ func TestUpdateRejectsWithoutWriting(t *testing.T) {
 			u.removePlatforms = []string{"ethereum"}
 		}, "given to both"},
 		{"invalid symbol", "ZIL", "Zilliqa", func(u *updater) { u.setSymbol = "../X" }, "invalid -set-symbol"},
+		{"-symbol escaping v3", "../COINGECKO_ID/MAPPING", "x", func(u *updater) { u.setName = "y" }, "invalid -symbol"},
+		{"invalid address on a mixed-case chain", "BORA", "BORA", func(u *updater) { u.setAddress = [][2]string{{"kaia", "not-an-evm-address"}} }, "expected 0x followed by 40 hex"},
 		{"same CoinGecko ID", "ZIL", "Zilliqa", func(u *updater) { u.setCoingeckoID = "zilliqa" }, "already uses CoinGecko ID"},
 		{"CoinGecko ID of another currency", "ZIL", "Zilliqa", func(u *updater) { u.setCoingeckoID = "chimaera" }, "already mapped to currency"},
 		{"name taken in the file", "CHI", "Chi Gastoken", func(u *updater) { u.setName = "xaya" }, "already has a currency named"},
@@ -339,4 +341,81 @@ func TestReplayXAUTAddressChange(t *testing.T) {
 	assertReplaced(t, oldFile, before[oldFile], after[oldFile], `"is_active":true`, `"is_active":false`, 1)
 	assertAppended(t, o2nFile, before[o2nFile], after[o2nFile], "  \""+newID+"\": \"12503e04-6b38-4459-8b7b-b160bd3289bf\"", '}')
 	assertAppended(t, cgFile, before[cgFile], after[cgFile], "    {\n        \"currency_id\": \""+newID+"\",\n        \"coingecko_id\": \"tether-gold\"\n    }", ']')
+}
+
+// BORA's v3 key is "Kaia" while new_to_old uses "kaia" (as for KAIA, MBX and
+// SSX in the real data).
+func TestUpdateAddressOnMixedCaseKey(t *testing.T) {
+	root := copyRepo(t)
+	addr := "0x02cbe46fb8a1f579254a9b485788f2d86cad5199"
+	oldID := "sygna:0x80002019.0x02cbe46fb8a1f579254a9b485788f2d86cad51aa"
+	newID := "sygna:0x80002019." + addr
+	oldFile := "cryptocurrency/sygna-0x80002019.0x02cbe46fb8a1f579254a9b485788f2d86cad51aa.json"
+	newFile := "cryptocurrency/sygna-0x80002019." + addr + ".json"
+
+	u := newUpdater(root, "BORA", "BORA")
+	u.setAddress = [][2]string{{"kaia", addr}}
+	before, after := runUpdate(t, root, u)
+
+	assertChanged(t, before, after, "cryptocurrency_v3/BORA.json", newFile, oldFile, cgFile, n2oFile, o2nFile)
+	v3 := "cryptocurrency_v3/BORA.json"
+	assertReplaced(t, v3, before[v3], after[v3],
+		"\"Kaia\": {\n        \"token_address\": \"0x02cbe46fb8a1f579254a9b485788f2d86cad51aa\"",
+		"\"Kaia\": {\n        \"token_address\": \""+addr+"\"", 1)
+	assertReplaced(t, n2oFile, before[n2oFile], after[n2oFile], `"kaia": "`+oldID+`"`, `"kaia": "`+newID+`"`, 1)
+	assertReplaced(t, oldFile, before[oldFile], after[oldFile], `"is_active":true`, `"is_active":false`, 1)
+	if !strings.Contains(after[newFile], `"currency_id":"`+newID+`"`) || !strings.Contains(after[newFile], `"is_active":true`) {
+		t.Errorf("%s: %s", newFile, after[newFile])
+	}
+}
+
+// A currency whose legacy IDs have no mapping.json entry only changes
+// mapping_v3.json.
+func TestUpdateCoingeckoIDWithoutLegacyEntries(t *testing.T) {
+	root := copyRepo(t)
+	path := filepath.Join(root, cgFile)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry := ",\n    {\n        \"currency_id\": \"sygna:0x800001fd\",\n        \"coingecko_id\": \"chimaera\"\n    }"
+	if strings.Count(string(data), entry) != 1 {
+		t.Fatal("fixture: Xaya mapping.json entry not found")
+	}
+	if err := os.WriteFile(path, []byte(strings.Replace(string(data), entry, "", 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	u := newUpdater(root, "CHI", "Xaya")
+	u.setCoingeckoID = "xaya"
+	before, after := runUpdate(t, root, u)
+	assertChanged(t, before, after, cgV3File)
+	// the dry run lists u.order, so mapping.json must not be staged at all
+	for _, rel := range u.order {
+		if rel == cgFile {
+			t.Errorf("%s staged although no entry changed", cgFile)
+		}
+	}
+}
+
+// Passing the current name next to a new symbol must not require legacy
+// names to match v3 (they may already differ in real data).
+func TestUpdateSymbolWithUnchangedName(t *testing.T) {
+	root := copyRepo(t)
+	path := filepath.Join(root, mvETHFile)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(strings.Replace(string(data), `"currency_name":"GensoKishi Metaverse"`, `"currency_name":"Genso Old"`, 1)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	u := newUpdater(root, "MV", "GensoKishi Metaverse")
+	u.setName, u.setSymbol = "GensoKishi Metaverse", "GENSO"
+	before, after := runUpdate(t, root, u)
+	assertChanged(t, before, after, "cryptocurrency_v3/MV.json", "cryptocurrency_v3/GENSO.json", mvETHFile, mvPolFile)
+	if !strings.Contains(after[mvETHFile], `"currency_name":"Genso Old"`) {
+		t.Errorf("legacy name should be left alone: %s", after[mvETHFile])
+	}
 }
