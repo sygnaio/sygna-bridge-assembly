@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs add_currency.go. If Go isn't installed, downloads a private copy into
+# Runs the add_currency tool (go run .). If Go isn't installed, downloads a private copy into
 # the user cache once (no admin rights or system install needed).
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -73,4 +73,4 @@ if ! command -v go >/dev/null 2>&1; then
   export GOTOOLCHAIN=local
 fi
 
-exec go run add_currency.go "$@"
+exec go run . "$@"

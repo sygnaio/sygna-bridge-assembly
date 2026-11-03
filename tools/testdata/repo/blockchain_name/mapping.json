@@ -1,0 +1,9 @@
+{
+    "sygna:0x8000003c": "ethereum",
+    "sygna:0x8000232e": "binance_smart_chain",
+    "sygna:0x800003c6": "polygon",
+    "sygna:0x80000139": "zilliqa",
+    "sygna:0x800001fd": "xaya",
+    "sygna:0x80002019": "Kaia",
+    "sygna:hyperevm": "hyperevm"
+}

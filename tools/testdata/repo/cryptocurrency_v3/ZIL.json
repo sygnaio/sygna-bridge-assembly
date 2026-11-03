@@ -1,0 +1,18 @@
+[
+  {
+    "id": "0e121e27-f8a5-441c-9607-99f9cad1795c",
+    "symbol": "ZIL",
+    "name": "Zilliqa",
+    "platforms": {
+      "zilliqa": {
+        "token_address": "native"
+      },
+      "ethereum": {
+        "token_address": "0x05f4a42e251f2d52b8ed15e9fedaacfcef1fad27"
+      },
+      "binance-smart-chain": {
+        "token_address": "0xb86abcb37c3a4b64f74f59301aff131a1becc787"
+      }
+    }
+  }
+]
