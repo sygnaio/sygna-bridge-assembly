@@ -4,15 +4,15 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-GO_VERSION=1.24.6
+GO_VERSION=1.26.10
 
 # Official SHA-256 checksums from https://go.dev/dl/?mode=json&include=all
 go_sha256() {
   case "$1" in
-    darwin-amd64) echo 4a8d7a32052f223e71faab424a69430455b27b3fff5f4e651f9d97c3e51a8746 ;;
-    darwin-arm64) echo 4e29202c49573b953be7cc3500e1f8d9e66ddd12faa8cf0939a4951411e09a2a ;;
-    linux-amd64) echo bbca37cc395c974ffa4893ee35819ad23ebb27426df87af92e93a9ec66ef8712 ;;
-    linux-arm64) echo 124ea6033a8bf98aa9fbab53e58d134905262d45a022af3a90b73320f3c3afd5 ;;
+    darwin-amd64) echo e820ab780c273ae4a340b79d0f3c4313b74ee029aa3874792145d44b9f4f91da ;;
+    darwin-arm64) echo 0b5183492292ada170f9b561a834863808dd02edba599e4ad0e89899330020b3 ;;
+    linux-amd64) echo ccfe7ae822d2c2f41f4fe7c956199967a4dac22d0ee0d2b2bfdb440aab3b20c5 ;;
+    linux-arm64) echo 3f4227ce7b206a513e794f1393adb473a07b46e94d18bd15d1c684bbb7319797 ;;
     *) return 1 ;;
   esac
 }
