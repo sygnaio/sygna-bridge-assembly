@@ -1,0 +1,22 @@
+[
+  {
+    "id": "479e8db4-1994-4e6b-9492-1f96cef0445e",
+    "symbol": "CHI",
+    "name": "Chi Gastoken",
+    "platforms": {
+      "ethereum": {
+        "token_address": "0x0000000000004946c0e9f43f4dee607b0ef1fa1c"
+      }
+    }
+  },
+  {
+    "id": "d4e554c0-a8d6-4bc9-8ee9-9edc0b4feb4c",
+    "symbol": "CHI",
+    "name": "Xaya",
+    "platforms": {
+      "xaya": {
+        "token_address": "native"
+      }
+    }
+  }
+]
