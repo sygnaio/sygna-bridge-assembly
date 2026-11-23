@@ -1,0 +1,26 @@
+[
+  {
+    "currency_id": "7a5e5f8f-c5ac-4a1c-9cce-750c2903a0b8",
+    "coingecko_id": "gensokishis-metaverse"
+  },
+  {
+    "currency_id": "c7350ae5-3e1c-4657-8938-ace4b185b353",
+    "coingecko_id": "sperax"
+  },
+  {
+    "currency_id": "0e121e27-f8a5-441c-9607-99f9cad1795c",
+    "coingecko_id": "zilliqa"
+  },
+  {
+    "currency_id": "058e24d8-4f85-46dd-83e5-bcebff3e7f9e",
+    "coingecko_id": "bora"
+  },
+  {
+    "currency_id": "d4e554c0-a8d6-4bc9-8ee9-9edc0b4feb4c",
+    "coingecko_id": "chimaera"
+  },
+  {
+    "currency_id": "479e8db4-1994-4e6b-9492-1f96cef0445e",
+    "coingecko_id": "chi-protocol"
+  }
+]

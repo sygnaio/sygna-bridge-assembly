@@ -1,0 +1,91 @@
+# Verifies the locally run Claude review (SYGN-15064).
+# Source: sygnaio/sygna-agent-plugin .github/workflows/claude-review-verify.yml;
+# keep copies in sync with it (only the target branches differ per repo).
+#
+# A reviewer runs `swiss-knife:review-pr`, which sets the `claude-review`
+# commit status with their own token. GitHub records who created a status, so
+# this job checks that the creator is a person other than the PR author and
+# publishes `claude-review-verified`. The ruleset requires
+# `claude-review-verified` from GitHub Actions only, so a status a developer
+# posts by hand does not count.
+#
+# Both triggers run the workflow file from the default branch, so a PR cannot
+# change this check, and this file must live on the default branch even when
+# the rule targets another branch such as `dev`. The job only reads statuses
+# and never checks out PR code.
+#
+# Per repo, set the branches whose PRs need the Claude review in both
+# `on.pull_request_target.branches` and `TARGET_BRANCHES` (space-separated).
+# Only PRs into those branches get `claude-review-verified`.
+name: claude-review-verify
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+    branches: [dev]
+  status:
+
+env:
+  TARGET_BRANCHES: dev
+
+permissions:
+  contents: read
+  pull-requests: read
+  statuses: write
+
+jobs:
+  verify:
+    if: github.event_name == 'pull_request_target' || github.event.context == 'claude-review'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: claude-review-verify-${{ github.event.pull_request.head.sha || github.event.sha }}
+      cancel-in-progress: true
+    steps:
+      - name: Verify claude-review
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.event.pull_request.head.sha || github.event.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          publish() {
+            gh api -X POST "repos/${REPO}/statuses/${SHA}" \
+              -f state="$1" -f context=claude-review-verified \
+              -f description="${2:0:140}" -f target_url="${3:-$RUN_URL}" >/dev/null
+            echo "claude-review-verified=$1 on ${SHA}: $2"
+          }
+
+          # Authors of the open PRs into a target branch whose head is this
+          # commit. The status event carries no branch, so filter here.
+          authors=$(gh api "repos/${REPO}/commits/${SHA}/pulls" \
+            --jq '.[] | select(.state == "open" and .head.sha == $ENV.SHA and (.base.ref as $b | $ENV.TARGET_BRANCHES | split(" ") | index($b))) | .user.login')
+          if [[ -z "$authors" ]]; then
+            echo "No open PR into ${TARGET_BRANCHES} has ${SHA} as its head; nothing to verify."
+            exit 0
+          fi
+
+          # Statuses come newest first, so the first match is the current result.
+          latest=$(gh api "repos/${REPO}/commits/${SHA}/statuses" --paginate \
+            --jq '.[] | select(.context == "claude-review") | [.state, .creator.login, .creator.type, (.target_url // "")] | @tsv')
+          latest=${latest%%$'\n'*}
+
+          if [[ -z "$latest" ]]; then
+            publish pending "Waiting for a reviewer (not the author) to run swiss-knife:review-pr"
+            exit 0
+          fi
+
+          IFS=$'\t' read -r state creator creator_type report_url <<<"$latest"
+
+          if grep -qxF "$creator" <<<"$authors"; then
+            publish failure "claude-review was set by the PR author (${creator}); another reviewer must run swiss-knife:review-pr" "$report_url"
+          elif [[ "$creator_type" != "User" ]]; then
+            publish failure "claude-review was set by ${creator} (${creator_type}), not a reviewer" "$report_url"
+          else
+            case "$state" in
+              success) publish success "Claude review by ${creator} passed" "$report_url" ;;
+              failure|error) publish failure "Claude review by ${creator} found blocking issues" "$report_url" ;;
+              *) publish pending "Claude review by ${creator} in progress" "$report_url" ;;
+            esac
+          fi

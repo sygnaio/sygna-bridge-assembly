@@ -1,0 +1,12 @@
+[
+  {
+    "id": "12503e04-6b38-4459-8b7b-b160bd3289bf",
+    "symbol": "XAUT",
+    "name": "Tether Gold",
+    "platforms": {
+      "ethereum": {
+        "token_address": "0x4922a015c4407f87432b179bb209e125432e4a2a"
+      }
+    }
+  }
+]
